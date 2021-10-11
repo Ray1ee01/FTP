@@ -1,4 +1,5 @@
 #include "socket_utils.h"
+#include "global.h"
 
 
 // 创建socket,并进行listen,bind 

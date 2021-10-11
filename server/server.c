@@ -9,6 +9,7 @@
 #include <getopt.h>
 
 #include "socket_utils.h"
+#include "global.h"
 
 
 int main(int argc, char **argv) {
