@@ -27,15 +27,20 @@
 #include <dirent.h>
 
 
+#define NOT_LOGIN -1
+#define NEED_PASS 0
+#define LOGIN 1
 
-struct client
+
+
+struct Client
 {
     struct sockaddr_in addr; // 只在port中使用
     int conn_fd;             // 传递command用fd
     int tran_fd;             // 文件transfer用fd
     int login;               // 登录状态 
     int tran_mode;           // 建立transfer连接的模式 PASV or POST 
-    
+    int state;               // 是否在处理命令
     // todo
 }client_entities[2];
 

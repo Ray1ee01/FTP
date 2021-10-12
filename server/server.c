@@ -60,7 +60,7 @@ int main(int argc, char **argv) {
     while (1) {
         conn_fd=AcceptConnection(listen_fd);
         if (conn_fd==-1)continue;
-        
+        // todo handle request
         //榨干socket传来的内容
         p = 0;
         while (1) {

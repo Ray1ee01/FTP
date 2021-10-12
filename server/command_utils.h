@@ -5,44 +5,44 @@
 struct CommandFilter
 {
     char* name;
-    void (*fptr)(const char* params);
+    void (*fptr)(const char* params,Client *client);
 };
 
-void HandleCommand(const char *cmd,const char *params);
+void HandleCommand(const char *cmd,const char *params,Client *client);
 
-void CmdABOR(const char *params);
+void CmdABOR(const char *params,Client *client);
 
-void CmdUSER(const char *params);
+void CmdUSER(const char *params,Client *client);
 
-void CmdPASS(const char *params);
+void CmdPASS(const char *params,Client *client);
 
-void CmdRETR(const char *params);
+void CmdRETR(const char *params,Client *client);
 
-void CmdSTOR(const char *params);
+void CmdSTOR(const char *params,Client *client);
 
-void CmdQUIT(const char *params);
+void CmdQUIT(const char *params,Client *client);
 
-void CmdSYST(const char *params);
+void CmdSYST(const char *params,Client *client);
 
-void CmdTYPE(const char *params);
+void CmdTYPE(const char *params,Client *client);
 
-void CmdPORT(const char *params);
+void CmdPORT(const char *params,Client *client);
 
-void CmdPASV(const char *params);
+void CmdPASV(const char *params,Client *client);
 
-void CmdMKD(const char *params);
+void CmdMKD(const char *params,Client *client);
 
-void CmdCWD(const char *params);
+void CmdCWD(const char *params,Client *client);
 
-void CmdPWD(const char *params);
+void CmdPWD(const char *params,Client *client);
 
-void CmdLIST(const char *params);
+void CmdLIST(const char *params,Client *client);
 
-void CmdRMD(const char *params);
+void CmdRMD(const char *params,Client *client);
 
-void CmdRNFR(const char *params);
+void CmdRNFR(const char *params,Client *client);
 
-void CmdRNTO(const char *params);
+void CmdRNTO(const char *params,Client *client);
 
 
 
