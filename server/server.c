@@ -66,7 +66,9 @@ int main(int argc, char **argv) {
         // todo handle request
         //榨干socket传来的内容
         p = 0;
+        char *msg[256];
         while (1) {
+            
             int n = read(conn_fd, sentence + p, 8191 - p);
             if (n < 0) {
                 printf("Error read(): %s(%d)\n", strerror(errno), errno);

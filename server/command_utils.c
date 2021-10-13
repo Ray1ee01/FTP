@@ -147,9 +147,9 @@ void CmdPASV(const char *params,Client* client)
         int h1,h2,h3,h4,p1,p2;
         sscanf(server_ip,"%d.%d.%d.%d" ,&h1,&h2,&h3,&h4);
         p1 = port / (1<<8);
-        p2 = port % (1<<8)
+        p2 = port % (1<<8);
         char* msg[128];
-        sprinf(msg,"Entering Passive Mode (%d,%d,%d,%d,%d,%d)",h1,h2,h3,h4,p1,p2);
+        sprinf(msg,"(%d,%d,%d,%d,%d,%d)",h1,h2,h3,h4,p1,p2);
         int tran_fd;
         tran_fd = ListenAndBind(port);
         // to do manage fd
