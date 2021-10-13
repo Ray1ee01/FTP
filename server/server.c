@@ -20,6 +20,9 @@ int main(int argc, char **argv) {
     int len;
     char root[128]="/FTPtemp";
     int port =6789;
+    
+    server_ip=GetLocalIP();
+    
     // 接收命令行参数
     // honor code: https://blog.csdn.net/pengrui18/article/details/8078813
     const char *optstring="p:r:";

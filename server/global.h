@@ -26,10 +26,17 @@
 #include <getopt.h>
 #include <dirent.h>
 
-
+// login
 #define NOT_LOGIN -1
 #define NEED_PASS 0
 #define LOGIN 1
+
+// tran_mode
+#define PORT -1
+#define PASV 1
+
+// state
+#define TRANSFER 1
 
 
 
@@ -44,5 +51,6 @@ struct Client
     // todo
 }client_entities[2];
 
+char server_ip[16];
 
 #endif
