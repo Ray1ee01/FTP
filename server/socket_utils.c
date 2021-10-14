@@ -28,7 +28,7 @@ int ListenBind(int port)
 	}
 
 	//开始监听socket
-	if (listen(listen_fd, 10) == -1) {
+	if (listen(listen_fd, 128) == -1) {// Max Backlog
 		printf("Error listen(): %s(%d)\n", strerror(errno), errno);
 		return -1;
 	}

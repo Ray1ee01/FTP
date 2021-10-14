@@ -32,11 +32,17 @@
 #define LOGIN 1
 
 // tran_mode
-#define PORT -1
+#define NOT_SET -1
+#define PORT 0
 #define PASV 1
 
 // state
+#define NOT_SET -1
 #define TRANSFER 1
+
+
+// constant for FTP system
+#define MAX_CLIENTS 64
 
 
 
@@ -49,8 +55,9 @@ struct Client
     int tran_mode;           // 建立transfer连接的模式 PASV or POST 
     int state;               // 是否在处理命令
     // todo
-}client_entities[2];
+}client_entities[MAX_CLIENTS];
 
 char server_ip[16];
 
+fd_set read_set,write_set;
 #endif

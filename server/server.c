@@ -9,6 +9,7 @@
 #include <getopt.h>
 
 #include "socket_utils.h"
+#include "message.h"
 #include "global.h"
 
 
@@ -57,18 +58,57 @@ int main(int argc, char **argv) {
             return 0;
         }
     }
-    listen_fd = ListenBind(port);
-    
-    //持续监听连接请求
+    listen_fd = ListenBind(port); // listen parameter?
+    // init all clients
+    for(int i=0;i<MAX_CLIENTS;i++)
+    {
+        Init_Client(&client_entities[i]);
+    }
+
+    // init FD_SET
+    FD_ZERO(&read_set);
+    FD_ZERO(&write_set);
+    FD_SET(listen_fd,&read_set);
+
+    // 持续监听连接请求
+    int result;
     while (1) {
-        conn_fd=AcceptConnection(listen_fd);
-        if (conn_fd==-1)continue;
-        // todo handle request
+        // 无限期阻塞，并测试文件描述符变动
+        result = select(FD_SETSIZE,&read_set,&write_set,(fd_set*) 0,NULL);
+        if (result<1)
+        {
+            printf("Error Select");
+        }
+        // 建立连接
+        if (FD_ISSET(listen_fd,&read_set))
+        {
+            conn_fd=AcceptConnection(listen_fd);
+            if (conn_fd==-1)
+            {
+                printf("Error accept");
+            }
+            else
+            {
+                for(int i=0;i<MAX_CLIENTS;i+)
+                {
+                    if(client_entities[i].conn_fd==-1)
+                    {
+                        client_entities[i].conn_fd=conn_fd;
+                        FD_SET(conn_fd,&write_set);
+                        FD_SET(conn_fd,&read_set);
+                        post_msg(conn_fd,220,NULL);
+                        break;
+                    }
+                    printf("No spare clients connection to use");
+                    close(conn_fd);
+                }
+            }
+        }
+        // to do 处理conn_fd的信息
         //榨干socket传来的内容
         p = 0;
         char *msg[256];
         while (1) {
-            
             int n = read(conn_fd, sentence + p, 8191 - p);
             if (n < 0) {
                 printf("Error read(): %s(%d)\n", strerror(errno), errno);
