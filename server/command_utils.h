@@ -2,11 +2,15 @@
 
 #ifndef COMMAND_UTILS
 #define COMMAND_UTILS
-struct CommandFilter
+
+#include "global.h"
+
+typedef struct
 {
     char* name;
     void (*fptr)(const char* params,Client *client);
-};
+}CommandFilter;
+
 
 void HandleCommand(const char *cmd,const char *params,Client *client);
 
@@ -43,6 +47,7 @@ void CmdRMD(const char *params,Client *client);
 void CmdRNFR(const char *params,Client *client);
 
 void CmdRNTO(const char *params,Client *client);
+
 
 
 

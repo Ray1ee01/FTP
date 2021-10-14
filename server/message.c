@@ -18,7 +18,7 @@ void get_msg(int fd, char *msg, int max_len)
             }
         }
     }
-    msg[p-1]='\0' // add \0
+    msg[p-1]='\0'; // add \0
 }
 
 
@@ -30,76 +30,76 @@ void post_msg(int fd,int code, char *pattern)
     switch(code)
     {
     case 125:
-        typical="Data connection already open;transfer starting";
+        strcpy(typical,"Data connection already open;transfer starting");
         break;
     case 150:
-        typical="File status okay; about to open data connection";
+        strcpy(typical,"File status okay; about to open data connection");
         break;
     case 200:
-        typical=NULL;
+        strcpy(typical,NULL);
         break;
     case 212:
-        typical="Directory status";
+        strcpy(typical,"Directory status");
         break;
     case 213:
-        typical="File status";
+        strcpy(typical,"File status");
         break;
     case 215:
-        typical="system type";
+        strcpy(typical,"system type");
         break;
     case 220:
-        typical="Servive ready for new user";
+        strcpy(typical,"Servive ready for new user");
         break;
     case 221:
-        typical="Service closing control connection";
+        strcpy(typical,"Service closing control connection");
         break;
     case 225:
-        typical="Data connection open; no transfer in progress";
+        strcpy(typical,"Data connection open; no transfer in progress");
         break;
     case 226:
-        typical="Closing data connection";
+        strcpy(typical,"Closing data connection");
         break;
     case 227:
-        typical="Entering Passive Mode";
+        strcpy(typical,"Entering Passive Mode");
         break;
     case 230:
-        typical="User logged in, proceed";
+        strcpy(typical,"User logged in, proceed");
         break;
     case 250:
-        typical="Requested file action, completed";
+        strcpy(typical,"Requested file action, completed");
         break;
     case 257:
-        typical="created";
+        strcpy(typical,"created");
         break;
     case 332:
-        typical="Need account for login";
+        strcpy(typical,"Need account for login");
         break;
     case 426:
-        typical="Connection closed; transfer aborted";
+        strcpy(typical,"Connection closed; transfer aborted");
         break;
     case 450:
-        typical="Requested file action not taken.File unavailable";
+        strcpy(typical,"Requested file action not taken.File unavailable");
         break;
     case 500:
-        typical="Syntax error,command unrecognized.";
+        strcpy(typical,"Syntax error,command unrecognized.");
         break;
     case 501:
-        typical="Syntax error in parameters or arguments.";
+        strcpy(typical,"Syntax error in parameters or arguments.");
         break;
     case 503:
-        typical="Bad sequence of commands.";
+        strcpy(typical,"Bad sequence of commands.");
         break;
     case 504:
-        typical="Command not implemented for that parameter.";
+        strcpy(typical,"Command not implemented for that parameter.");
         break;
     case 530:
-        typical="Not logged in.";
+        strcpy(typical,"Not logged in.");
         break;
     default:
-        typical=NULL;
+        strcpy(typical,NULL);
         break;
     }
     sprintf(msg,"%d,%s %s\r\n",code,typical,pattern);
-    send(fd,msg,len(msg),MSG_WAITALL);
+    send(fd,msg,strlen(msg),MSG_WAITALL);
     return;
 }

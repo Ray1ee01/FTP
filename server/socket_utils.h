@@ -14,7 +14,7 @@ int ListenBind(int port);
 // build a connection
 int AcceptConnection(int listen_fd);
 
-char* GetLocalIP();
+void GetLocalIP(char *ip);
 
 int CheckAvailPort(int port);
 #endif

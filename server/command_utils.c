@@ -1,29 +1,40 @@
 #include "command_utils.h"
 #include "global.h"
-struct CommandFilter[3];
 
-CommandFilter[0]={
-    "ABOR",
-    CmdABOR
+
+CommandFilter Cmd_Filters[5]={
+    {
+        "ABOR",
+        CmdABOR
+    },
+    {
+        "USER",
+        CmdUSER
+    },
+    {
+        "PASS",
+        CmdPASS
+    },
+    {
+        "PORT",
+        CmdPORT
+    },
+    {
+        "PASV",
+        CmdPASV
+    },
 };
-CommandFilter[1]={
-    "USER",
-    CmdUSER
-};
-CommandFilter[2]={
-    "PASS",
-    CmdPASS
-};
-void HandleCommand(const char* cmd,const char* params,Client *client)
+
+void HandleCommand(const char* cmd,const char* params,Client* client)
 {
     for (int i=0;i<3;i++)
     {
-        if (strcmp(cmd,CommandFilter[i].name)==0)
+        if (strcmp(cmd,Cmd_Filters[i].name)==0)
         {
             if (client->state==-1)
             {
-                CommandFilter[i].fptr(params,client);
-                client->state=-1
+                Cmd_Filters[i].fptr(params,client);
+                client->state=-1;
                 break;
             }
             else
@@ -65,14 +76,14 @@ void CmdUSER(const char* params,Client *client)
 
 void CmdPASS(const char* params,Client *client)
 {
-    if(client->log_in!=NEED_PASS)
+    if(client->login!=NEED_PASS)
     {
         post_msg(client->conn_fd,503,NULL);
     }
     else
     {
-        client->log_in=LOGIN;
-        post_msg(client->conn_fd,230,NULL)
+        client->login=LOGIN;
+        post_msg(client->conn_fd,230,NULL);
     }
     return;
 }
@@ -106,13 +117,13 @@ void CmdPORT(const char* params,Client *client)
             sprintf(ip,"%d.%d.%d.%d",h1,h2,h3,h4);
             //设置目标主机的ip和port
             memset(&(client->addr), 0, sizeof(client->addr));
-            addr.sin_family = AF_INET;
-            addr.sin_port = htons((p1<<8)+p2);
-            if (inet_pton(AF_INET,ip, &clinet->addr.sin_addr) <= 0) {			//转换ip地址:点分十进制-->二进制
+            client->addr.sin_family = AF_INET;
+            client->addr.sin_port = htons((p1<<8)+p2);
+            if (inet_pton(AF_INET,ip, &(client->addr.sin_addr)) <= 0) {			//转换ip地址:点分十进制-->二进制
                 printf("Error inet_pton(): %s(%d)\n", strerror(errno), errno);
                 post_msg(client->conn_fd,501,NULL);
             }
-            else if (-1==(tran_fd=socket(AF_INET,SOCK_STREAM,IPPROTO_TCP)))
+            else if (-1==(client->tran_fd=socket(AF_INET,SOCK_STREAM,IPPROTO_TCP)))
             {
                 printf("Error socket(): %s(%d)\n", strerror(errno), errno);
                 post_msg(client->conn_fd, 500, NULL);
@@ -139,7 +150,7 @@ void CmdPASV(const char *params,Client* client)
             //todo close tranfer connect
         }
         int port;
-        while(true)
+        while(1)
         {
             port = rand() % 45536+20000;
             if (CheckAvailPort(port)==0)break;
@@ -149,11 +160,11 @@ void CmdPASV(const char *params,Client* client)
         p1 = port / (1<<8);
         p2 = port % (1<<8);
         char* msg[128];
-        sprinf(msg,"(%d,%d,%d,%d,%d,%d)",h1,h2,h3,h4,p1,p2);
+        sprintf(msg,"(%d,%d,%d,%d,%d,%d)",h1,h2,h3,h4,p1,p2);
         int tran_fd;
-        tran_fd = ListenAndBind(port);
+        tran_fd = ListenBind(port);
         // to do manage fd
-        post_msg(client->fd,227,msg);
+        post_msg(client->conn_fd,227,msg);
     }
     return;
 }

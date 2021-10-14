@@ -11,19 +11,21 @@
 #include "socket_utils.h"
 #include "message.h"
 #include "global.h"
+#include "command_utils.h"
+#include "client_utils.h"
 
 
 int main(int argc, char **argv) {
     int listen_fd, conn_fd;		//监听socket和连接socket不一样，后者用于数据传输
     struct sockaddr_in addr;
-    char sentence[8192];
     int p;
     int len;
     char root[128]="/FTPtemp";
     int port =6789;
+    char sentence[256];
     
-    server_ip=GetLocalIP();
-    
+    GetLocalIP(server_ip);
+    printf("%s",server_ip);    
     // 接收命令行参数
     // honor code: https://blog.csdn.net/pengrui18/article/details/8078813
     const char *optstring="p:r:";
@@ -58,6 +60,8 @@ int main(int argc, char **argv) {
             return 0;
         }
     }
+
+    printf("Read argu ok");//totest
     listen_fd = ListenBind(port); // listen parameter?
     // init all clients
     for(int i=0;i<MAX_CLIENTS;i++)
@@ -69,7 +73,7 @@ int main(int argc, char **argv) {
     FD_ZERO(&read_set);
     FD_ZERO(&write_set);
     FD_SET(listen_fd,&read_set);
-
+    char Cmd_Filter[256];
     // 持续监听连接请求
     int result;
     while (1) {
@@ -89,7 +93,7 @@ int main(int argc, char **argv) {
             }
             else
             {
-                for(int i=0;i<MAX_CLIENTS;i+)
+                for(int i=0;i<MAX_CLIENTS;i++)
                 {
                     if(client_entities[i].conn_fd==-1)
                     {
@@ -104,47 +108,94 @@ int main(int argc, char **argv) {
                 }
             }
         }
-        // to do 处理conn_fd的信息
-        //榨干socket传来的内容
-        p = 0;
-        char *msg[256];
-        while (1) {
-            int n = read(conn_fd, sentence + p, 8191 - p);
-            if (n < 0) {
-                printf("Error read(): %s(%d)\n", strerror(errno), errno);
-                close(conn_fd);
+        for(int i=0;i<MAX_CLIENTS;i++)
+        {
+            if(client_entities[i].conn_fd==-1)
+            {
                 continue;
-            } else if (n == 0) {
-                break;
-            } else {
-                p += n;
-                if (sentence[p - 1] == '\n') {
-                    break;
+            }
+            if (FD_ISSET(client_entities[i].conn_fd,&read_set))
+            {
+                memset(&sentence,0,sizeof sentence);
+                int n = read(client_entities[i].conn_fd,sentence,255);
+                if(n<=0)
+                {
+                    printf("Error read(): %s(%d)\n", strerror(errno), errno);
+                    close(client_entities[i].conn_fd);
+                    client_entities[i].conn_fd=-1;
+                    continue;
                 }
+                else
+                {
+                    sentence[n]='\0';
+                    for(int j=strlen(sentence)-1;j>=1;j--)
+                    {
+                        if(sentence[j]=='\n' && sentence[j-1]=='\r')
+                        {
+                            sentence[j-1]='\0';
+                            break;
+                        }
+                        char cmd[16];
+                        char params[64];
+                        int cmd_param = sscanf(sentence, "%s %s", cmd,params);
+                        if(cmd_param<=0)
+                        {
+                            post_msg(client_entities[i].conn_fd,500,NULL);
+                        }
+                        else if (cmd_param==1)
+                        {
+                            HandleCommand(cmd,NULL,&client_entities[i]);
+                        }
+                        else
+                        {
+                            HandleCommand(cmd,params,&client_entities[i]);
+                        }
+                    }
+                }
+                
             }
         }
-        //socket接收到的字符串并不会添加'\0'
-        sentence[p - 1] = '\0';
-        len = p - 1;
+
+        // //榨干socket传来的内容
+        // p = 0;
+        // char *msg[256];
+        // while (1) {
+        //     int n = read(conn_fd, sentence + p, 8191 - p);
+        //     if (n < 0) {
+        //         printf("Error read(): %s(%d)\n", strerror(errno), errno);
+        //         close(conn_fd);
+        //         continue;
+        //     } else if (n == 0) {
+        //         break;
+        //     } else {
+        //         p += n;
+        //         if (sentence[p - 1] == '\n') {
+        //             break;
+        //         }
+        //     }
+        // }
+        // //socket接收到的字符串并不会添加'\0'
+        // sentence[p - 1] = '\0';
+        // len = p - 1;
         
-        //字符串处理
-        for (p = 0; p < len; p++) {
-            sentence[p] = toupper(sentence[p]);
-        }
+        // //字符串处理
+        // for (p = 0; p < len; p++) {
+        //     sentence[p] = toupper(sentence[p]);
+        // }
 
-        //发送字符串到socket
-         p = 0;
-        while (p < len) {
-            int n = write(conn_fd, sentence + p, len + 1 - p);
-            if (n < 0) {
-                printf("Error write(): %s(%d)\n", strerror(errno), errno);
-                return 1;
-             } else {
-                p += n;
-            }			
-        }
+        // //发送字符串到socket
+        //  p = 0;
+        // while (p < len) {
+        //     int n = write(conn_fd, sentence + p, len + 1 - p);
+        //     if (n < 0) {
+        //         printf("Error write(): %s(%d)\n", strerror(errno), errno);
+        //         return 1;
+        //      } else {
+        //         p += n;
+        //     }			
+        // }
 
-        close(conn_fd);
+        // close(conn_fd);
     }
     close(listen_fd);
 }

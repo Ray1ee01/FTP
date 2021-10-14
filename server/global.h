@@ -46,7 +46,7 @@
 
 
 
-struct Client
+typedef struct
 {
     struct sockaddr_in addr; // 只在port中使用
     int conn_fd;             // 传递command用fd
@@ -55,7 +55,8 @@ struct Client
     int tran_mode;           // 建立transfer连接的模式 PASV or POST 
     int state;               // 是否在处理命令
     // todo
-}client_entities[MAX_CLIENTS];
+}Client;
+Client client_entities[MAX_CLIENTS];
 
 char server_ip[16];
 

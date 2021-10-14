@@ -12,7 +12,7 @@ int ListenBind(int port)
     //创建socket
 	if ((listen_fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) == -1) {
 		printf("Error socket(): %s(%d)\n", strerror(errno), errno);
-		return 1;
+		return -1;
 	}
 
 	//设置本机的ip和port
@@ -20,7 +20,6 @@ int ListenBind(int port)
 	addr.sin_family = AF_INET;
 	addr.sin_port = htons(port);
 	addr.sin_addr.s_addr = htonl(INADDR_ANY);	//监听"0.0.0.0"
-
 	//将本机的ip和port与socket绑定
 	if (bind(listen_fd, (struct sockaddr*)&addr, sizeof(addr)) == -1) {
 		printf("Error bind(): %s(%d)\n", strerror(errno), errno);
@@ -33,7 +32,7 @@ int ListenBind(int port)
 		return -1;
 	}
     // -1 意味着中间报错了
-
+	printf("listen success");
     return listen_fd;
 }
 
@@ -50,15 +49,14 @@ int AcceptConnection(int listen_fd)
 
 
 //https://cloud.tencent.com/developer/article/1177071
-char* GetLocalIP(){
+void GetLocalIP(char *ip){
     int inet_sock;  
     struct ifreq ifr;  
-	char ip[32]={'\0'};  
     inet_sock = socket(AF_INET, SOCK_DGRAM, 0);  
-    strcpy(ifr.ifr_name, "eth0");  
-    ioctl(inet_sock, SIOCGIFADDR, &ifr);  
+    strcpy(ifr.ifr_name, "eth0");
+    ioctl(inet_sock, SIOCGIFADDR, &ifr);
     strcpy(ip, inet_ntoa(((struct sockaddr_in *)&ifr.ifr_addr)->sin_addr));  
-    return ip;
+	return;
 }
 
 

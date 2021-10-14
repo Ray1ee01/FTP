@@ -15,6 +15,6 @@ void Init_Client(Client* client)
 
 void Setup_Client(Client* client,int conn_fd)
 {
-    Client->conn_fd=conn_fd;
+    client->conn_fd=conn_fd;
     return;
 }
