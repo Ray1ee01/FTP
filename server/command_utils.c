@@ -1,4 +1,5 @@
 #include "command_utils.h"
+#include "socket_utils.h"
 #include "global.h"
 
 
@@ -27,7 +28,8 @@ CommandFilter Cmd_Filters[5]={
 
 void HandleCommand(const char* cmd,const char* params,Client* client)
 {
-    for (int i=0;i<3;i++)
+    printf("handle cmd %s\n",&cmd);
+    for (int i=0;i<5;i++)
     {
         if (strcmp(cmd,Cmd_Filters[i].name)==0)
         {
@@ -62,13 +64,13 @@ void CmdABOR(const char* params,Client *client)
 
 void CmdUSER(const char* params,Client *client)
 {
-    if (params!="anonymous")
+    if (strcmp(params,"anonymous")!=0)
     {
         post_msg(client->conn_fd,504,NULL);
     }
     else
     {
-        client->login=LOGIN;                // 不论是否已登录，强制更新登录状态。
+        client->login=NEED_PASS;                // 不论是否已登录，强制更新登录状态。
         post_msg(client->conn_fd,331,NULL); // 即使已在线，也不做下线再登录的处理。
     }
     return;
@@ -76,6 +78,7 @@ void CmdUSER(const char* params,Client *client)
 
 void CmdPASS(const char* params,Client *client)
 {
+    printf("get Cmd success\n");
     if(client->login!=NEED_PASS)
     {
         post_msg(client->conn_fd,503,NULL);
@@ -150,6 +153,7 @@ void CmdPASV(const char *params,Client* client)
             //todo close tranfer connect
         }
         int port;
+        printf("to check port\n");
         while(1)
         {
             port = rand() % 45536+20000;
@@ -161,10 +165,38 @@ void CmdPASV(const char *params,Client* client)
         p2 = port % (1<<8);
         char* msg[128];
         sprintf(msg,"(%d,%d,%d,%d,%d,%d)",h1,h2,h3,h4,p1,p2);
+        
         int tran_fd;
-        tran_fd = ListenBind(port);
-        // to do manage fd
+        printf("to listen tran port\n");
+        client->tran_fd = ListenBind(port);
+        FD_SET(client->tran_fd,&read_set);
+        FD_SET(client->tran_fd,&write_set);
         post_msg(client->conn_fd,227,msg);
     }
     return;
+}
+
+void CmdRETR(const char *params,Client* client)
+{   
+    // todo if server is transfering another file to the client?
+    FILE *file;
+    strcpy(client->filepath,strcat(root,params));
+    if (params==NULL)
+    {
+        post_msg(client->conn_fd,504,NULL);
+    }
+    else
+    {
+        FILE *file;
+        strcpy(client->filepath,strcat(root,params));
+        if((file=fopen(client->filepath,"rb+"))==NULL)
+        {
+            post_msg(client->conn_fd,550,NULL);
+        }
+        else
+        {
+            fclose(file);
+            client->state=ABOUT_TO_TRANSFER;
+        }
+    }
 }

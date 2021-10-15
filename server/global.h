@@ -38,6 +38,7 @@
 
 // state
 #define NOT_SET -1
+#define ABOUT_TO_TRANSFER 0
 #define TRANSFER 1
 
 
@@ -45,6 +46,7 @@
 #define MAX_CLIENTS 64
 
 
+#define BUFFER_SIZE 128
 
 typedef struct
 {
@@ -54,11 +56,14 @@ typedef struct
     int login;               // 登录状态 
     int tran_mode;           // 建立transfer连接的模式 PASV or POST 
     int state;               // 是否在处理命令
+    char filepath[128];      // 完整的文件路径 root+params
+    int offset;              // 文件传输初始偏移量
     // todo
 }Client;
 Client client_entities[MAX_CLIENTS];
 
 char server_ip[16];
+char root[16];
 
 fd_set read_set,write_set;
 #endif

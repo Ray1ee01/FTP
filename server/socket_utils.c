@@ -7,6 +7,7 @@
 // return: listenfd，标识已listen的socket
 int ListenBind(int port)
 {
+	printf("start listen\n");
     int listen_fd;
     struct sockaddr_in addr;
     //创建socket
@@ -14,7 +15,7 @@ int ListenBind(int port)
 		printf("Error socket(): %s(%d)\n", strerror(errno), errno);
 		return -1;
 	}
-
+	printf("socket success\n");
 	//设置本机的ip和port
 	memset(&addr, 0, sizeof(addr));
 	addr.sin_family = AF_INET;
@@ -25,7 +26,7 @@ int ListenBind(int port)
 		printf("Error bind(): %s(%d)\n", strerror(errno), errno);
 		return -1;
 	}
-
+	printf("bind success\n");
 	//开始监听socket
 	if (listen(listen_fd, 128) == -1) {// Max Backlog
 		printf("Error listen(): %s(%d)\n", strerror(errno), errno);
@@ -98,7 +99,7 @@ int CheckAvailPort(int port)
 	int fd =socket(AF_INET,SOCK_STREAM,0);
 	addr.sin_family = AF_INET;
 	addr.sin_port = htons(port);
-	inet_pton(AF_INET,INADDR_ANY,&addr.sin_addr);
+	inet_pton(AF_INET,"127.0.0.1",&(addr.sin_addr));
 	int ret = bind(fd,(struct sockaddr*)(&addr),sizeof(addr));
 	close(fd);
 	return ret;

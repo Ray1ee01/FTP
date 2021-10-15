@@ -29,29 +29,42 @@ int main(int argc, char **argv) {
 		printf("Error inet_pton(): %s(%d)\n", strerror(errno), errno);
 		return 1;
 	}
-
+	printf("about to connect\n");
 	//连接上目标主机（将socket和目标主机连接）-- 阻塞函数
 	if (connect(sockfd, (struct sockaddr*)&addr, sizeof(addr)) < 0) {
 		printf("Error connect(): %s(%d)\n", strerror(errno), errno);
 		return 1;
 	}
-
-	//获取键盘输入
-	fgets(sentence, 4096, stdin);
-	len = strlen(sentence);
-	sentence[len] = '\n';
-	sentence[len + 1] = '\0';
-	
-	//把键盘输入写入socket
-	p = 0;
-	while (p < len) {
-		int n = write(sockfd, sentence + p, len + 1 - p);		//write函数不保证所有的数据写完，可能中途退出
-		if (n < 0) {
+	printf("connect success\n");
+	while(1)
+	{	
+		char response[256];
+		read(sockfd,response,255);
+		printf("%s\n",response);
+		//获取键盘输入
+		fgets(sentence, 4096, stdin);
+		len = strlen(sentence);
+		// sentence[len] = '\n';
+		// sentence[len + 1] = '\0';
+		printf("%s\n",sentence);
+		//把键盘输入写入socket
+		int n = write(sockfd,sentence,255);
+		printf("write success\n");
+		if(n<0)
+		{
 			printf("Error write(): %s(%d)\n", strerror(errno), errno);
 			return 1;
- 		} else {
-			p += n;
-		}			
+		}
+		// p = 0;
+		// while (p < len) {
+		// 	int n = write(sockfd, sentence + p, len + 1 - p);		//write函数不保证所有的数据写完，可能中途退出
+		// 	if (n < 0) {
+		// 		printf("Error write(): %s(%d)\n", strerror(errno), errno);
+		// 		return 1;
+		// 	} else {
+		// 		p += n;
+		// 	}			
+		// }
 	}
 
 	//榨干socket接收到的内容

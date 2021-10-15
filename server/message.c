@@ -36,7 +36,9 @@ void post_msg(int fd,int code, char *pattern)
         strcpy(typical,"File status okay; about to open data connection");
         break;
     case 200:
-        strcpy(typical,NULL);
+        memset(typical,0,sizeof(typical));
+        //typical=NULL;
+        // strcpy(typical,NULL);
         break;
     case 212:
         strcpy(typical,"Directory status");
@@ -71,6 +73,9 @@ void post_msg(int fd,int code, char *pattern)
     case 257:
         strcpy(typical,"created");
         break;
+    case 331:
+        strcpy(typical,"Username OK,need password");
+        break;
     case 332:
         strcpy(typical,"Need account for login");
         break;
@@ -96,10 +101,44 @@ void post_msg(int fd,int code, char *pattern)
         strcpy(typical,"Not logged in.");
         break;
     default:
-        strcpy(typical,NULL);
+        memset(typical,0,sizeof(typical));
+        //typical=NULL;
+        // strcpy(typical,NULL);
         break;
     }
     sprintf(msg,"%d,%s %s\r\n",code,typical,pattern);
-    send(fd,msg,strlen(msg),MSG_WAITALL);
+    printf("Send msg %s\n",typical);
+    printf("Send msg %s\n",pattern);
+    send(fd,msg,strlen(msg),0);// why send duplicate last msg?
     return;
+}
+
+// https://blog.csdn.net/lisonglisonglisong/article/details/22699675
+// https://www.runoob.com/cprogramming/c-function-fseek.html
+int send_file(Client *client, FILE *file, char *buf)
+{
+    bzero(buf,BUFFER_SIZE);
+    int len=0;
+    while(len=fread(buf,sizeof(char),BUFFER_SIZE,file)>0)
+    {
+        if(client->state!=TRANSFER)
+        {
+            return -1; // state conflict
+        }
+        else
+        {
+            if(send(client->tran_fd,buf,len,0)<0)
+            {
+                printf("Send:%s Failed./n",buf);
+                client->state=ABOUT_TO_TRANSFER;
+                return 0; // send fail
+            }
+            client->offset+=len;
+            bzero(buf,BUFFER_SIZE);
+        }
+    }
+    fclose(file);
+    printf("File transfer end\n");
+    client->offset=0;
+    return 1; // success
 }

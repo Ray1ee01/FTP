@@ -20,12 +20,13 @@ int main(int argc, char **argv) {
     struct sockaddr_in addr;
     int p;
     int len;
-    char root[128]="/FTPtemp";
     int port =6789;
     char sentence[256];
-    
+    char buf[BUFFER_SIZE];
+    strcpy(root,"/home/ubuntu");
     GetLocalIP(server_ip);
-    printf("%s",server_ip);    
+    printf("%s",server_ip);
+    printf("Start receive argu\n");    
     // 接收命令行参数
     // honor code: https://blog.csdn.net/pengrui18/article/details/8078813
     const char *optstring="p:r:";
@@ -61,9 +62,14 @@ int main(int argc, char **argv) {
         }
     }
 
-    printf("Read argu ok");//totest
     listen_fd = ListenBind(port); // listen parameter?
+    printf("%d\n",listen_fd);
     // init all clients
+    if(listen_fd==-1)
+    {
+        printf("Listen error");
+        return 0;
+    }
     for(int i=0;i<MAX_CLIENTS;i++)
     {
         Init_Client(&client_entities[i]);
@@ -73,18 +79,26 @@ int main(int argc, char **argv) {
     FD_ZERO(&read_set);
     FD_ZERO(&write_set);
     FD_SET(listen_fd,&read_set);
+    if(FD_ISSET(listen_fd,&read_set))printf("listen fd is set\n1");
     char Cmd_Filter[256];
     // 持续监听连接请求
     int result;
+    // https://blog.csdn.net/y396397735/article/details/55004775
+    fd_set t_read;
+    fd_set t_write;
+
     while (1) {
+        t_read=read_set;
+        t_write=write_set;
         // 无限期阻塞，并测试文件描述符变动
-        result = select(FD_SETSIZE,&read_set,&write_set,(fd_set*) 0,NULL);
+        result = select(FD_SETSIZE,&t_read,&t_write,(fd_set*) 0,NULL);
         if (result<1)
         {
             printf("Error Select");
+            return 0;
         }
         // 建立连接
-        if (FD_ISSET(listen_fd,&read_set))
+        if (FD_ISSET(listen_fd,&t_read))
         {
             conn_fd=AcceptConnection(listen_fd);
             if (conn_fd==-1)
@@ -93,18 +107,19 @@ int main(int argc, char **argv) {
             }
             else
             {
+                printf("Conn_fd build\n");
                 for(int i=0;i<MAX_CLIENTS;i++)
                 {
                     if(client_entities[i].conn_fd==-1)
                     {
                         client_entities[i].conn_fd=conn_fd;
-                        FD_SET(conn_fd,&write_set);
-                        FD_SET(conn_fd,&read_set);
-                        post_msg(conn_fd,220,NULL);
+                        FD_SET(client_entities[i].conn_fd,&write_set);
+                        FD_SET(client_entities[i].conn_fd,&read_set);
+                        post_msg(client_entities[i].conn_fd,220,NULL);
                         break;
                     }
                     printf("No spare clients connection to use");
-                    close(conn_fd);
+                    close(client_entities[i].conn_fd);
                 }
             }
         }
@@ -114,11 +129,12 @@ int main(int argc, char **argv) {
             {
                 continue;
             }
-            if (FD_ISSET(client_entities[i].conn_fd,&read_set))
+            if (FD_ISSET(client_entities[i].conn_fd,&t_read))
             {
+                printf("get avail client %d\n",i);
                 memset(&sentence,0,sizeof sentence);
-                int n = read(client_entities[i].conn_fd,sentence,255);
-                if(n<=0)
+                get_msg(client_entities[i].conn_fd,sentence,255);
+                if(strlen(sentence)<=0)
                 {
                     printf("Error read(): %s(%d)\n", strerror(errno), errno);
                     close(client_entities[i].conn_fd);
@@ -127,7 +143,6 @@ int main(int argc, char **argv) {
                 }
                 else
                 {
-                    sentence[n]='\0';
                     for(int j=strlen(sentence)-1;j>=1;j--)
                     {
                         if(sentence[j]=='\n' && sentence[j-1]=='\r')
@@ -135,24 +150,66 @@ int main(int argc, char **argv) {
                             sentence[j-1]='\0';
                             break;
                         }
-                        char cmd[16];
-                        char params[64];
-                        int cmd_param = sscanf(sentence, "%s %s", cmd,params);
-                        if(cmd_param<=0)
-                        {
-                            post_msg(client_entities[i].conn_fd,500,NULL);
-                        }
-                        else if (cmd_param==1)
-                        {
-                            HandleCommand(cmd,NULL,&client_entities[i]);
-                        }
-                        else
-                        {
-                            HandleCommand(cmd,params,&client_entities[i]);
-                        }
+                    }
+                    char cmd[16];
+                    char params[64];
+                    memset(cmd,0,sizeof cmd);
+                    memset(params,0,sizeof params);
+                    int cmd_param = sscanf(sentence, "%s %s", cmd,params);
+                    printf("%s,%s\n",cmd,params);
+                    if(cmd_param<=0)
+                    {
+                        post_msg(client_entities[i].conn_fd,500,NULL);
+                    }
+                    else if (cmd_param==1)
+                    {
+                        HandleCommand(cmd,NULL,&client_entities[i]);
+                    }
+                    else
+                    {
+                        HandleCommand(cmd,params,&client_entities[i]);
                     }
                 }
-                
+            }
+            if(client_entities[i].tran_fd==-1)
+            {
+                continue;
+            }
+            if(FD_ISSET(client_entities[i].tran_fd,&t_read))
+            {
+                if(client_entities[i].tran_mode== PASV)
+                {
+                    int tran_fd=AcceptConnection(client_entities);
+                    if (tran_fd==-1)
+                    {
+                        post_msg(client_entities[i].conn_fd,425,NULL);
+                        continue;
+                    }
+                    client_entities[i].state=ABOUT_TO_TRANSFER;
+                }
+                else if(client_entities[i].tran_mode==PORT)
+                {
+                    client_entities[i].state=ABOUT_TO_TRANSFER;
+                }
+                else
+                {
+                    FD_CLR(client_entities[i].tran_fd,&read_set);
+                    FD_CLR(client_entities[i].tran_fd,&write_set);
+                    client_entities[i].tran_fd=-1;
+                    client_entities[i].tran_mode=NOT_SET;
+
+                }
+                //to do receive file
+            }
+            else if(FD_ISSET(client_entities[i].tran_fd,&t_write))
+            {
+                if (client_entities[i].state==ABOUT_TO_TRANSFER)
+                {
+                    client_entities[i].state=TRANSFER;
+                    FILE* file=fopen(client_entities[i].filepath,"rb+");
+                    fseek(file,client_entities[i].offset,SEEK_SET);
+                    send_file(&client_entities[i],file,buf);
+                }
             }
         }
 
