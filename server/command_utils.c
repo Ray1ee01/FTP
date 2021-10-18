@@ -1,9 +1,10 @@
 #include "command_utils.h"
 #include "socket_utils.h"
+#include "client_utils.h"
 #include "global.h"
 
 
-CommandFilter Cmd_Filters[6]={
+CommandFilter Cmd_Filters[11]={
     {
         "ABOR",
         CmdABOR
@@ -27,20 +28,39 @@ CommandFilter Cmd_Filters[6]={
     {
         "RETR",
         CmdRETR
+    },
+    {
+        "STOR",
+        CmdSTOR
+    },
+    {
+        "SYST",
+        CmdSYST
+    },
+    {
+        "TYPE",
+        CmdTYPE
+    },
+    {
+        "QUIT",
+        CmdQUIT
+    },
+    {
+        "LIST",
+        CmdLIST
     }
 };
 
 void HandleCommand(const char* cmd,const char* params,Client* client)
 {
     printf("handle cmd %s\n",&cmd);
-    for (int i=0;i<6;i++)
+    for (int i=0;i<11;i++)
     {
         if (strcmp(cmd,Cmd_Filters[i].name)==0)
         {
             if (client->state==-1)
             {
                 Cmd_Filters[i].fptr(params,client);
-                client->state=-1;
                 break;
             }
             else
@@ -202,8 +222,88 @@ void CmdRETR(const char *params,Client* client)
         {
             fclose(file);
             client->state=ABOUT_TO_TRANSFER;
+            printf("retr true\n");
+            printf("%d\n",client->state);
             FD_SET(client->tran_fd,&write_set);
+        }
+    }
+}
+
+void CmdSTOR(const char *params,Client* client)
+{   
+    // todo if server is transfering another file to the client?
+    FILE *file;
+    if (params==NULL)
+    {
+        post_msg(client->conn_fd,504,NULL);
+    }
+    else
+    {
+        FILE *file;
+        printf("%s\n",params);
+        sprintf(client->filepath,"%s/%s",root,params);
+        printf("%s\n",client->filepath);
+        if((file=fopen(client->filepath,"ab+"))==NULL)
+        {
+            post_msg(client->conn_fd,550,NULL);
+        }
+        else
+        {
+            fclose(file);
+            client->state=ABOUT_TO_TRANSFER;
             FD_SET(client->tran_fd,&read_set);
         }
     }
+}
+void CmdSYST(const char *params,Client* client)
+{
+    if (params!=NULL)
+    {
+        post_msg(client->conn_fd,504,NULL);
+    }
+    post_msg(client->conn_fd,215,NULL);
+}
+void CmdTYPE(const char *params,Client* client)
+{
+    if (strcmp(params,"I")!=0)
+    {
+        post_msg(client->conn_fd,504,NULL);
+    }
+    else
+    {
+        post_msg(client->conn_fd,200,NULL);
+    }
+}
+void CmdQUIT(const char *params,Client* client)
+{
+    if (params!=NULL)
+    {
+        post_msg(client->conn_fd,504,NULL);
+    }
+    else
+    {
+        post_msg(client->conn_fd,221);
+        FD_CLR(client->conn_fd,&read_set);
+        FD_CLR(client->tran_fd,&read_set);
+        FD_CLR(client->conn_fd,&write_set);
+        FD_CLR(client->tran_fd,&write_set);
+        Init_Client(client);
+    }
+    return;
+}
+void CmdLIST(const char *params,Client* client)
+{
+    char path[256];
+    if(params==NULL)
+    {
+        sprintf(client->filepath,"%s");
+    }
+    else
+    {
+        sprintf(client->filepath,"%s/%s",root,params);
+    }
+    client->list=LIST;
+    client->state=ABOUT_TO_TRANSFER;
+    FD_SET(client->tran_fd,&write_set);
+    return;
 }

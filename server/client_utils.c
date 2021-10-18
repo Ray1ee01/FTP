@@ -9,6 +9,7 @@ void Init_Client(Client* client)
     client->login=NOT_LOGIN;
     client->tran_mode=NOT_SET;
     client->state=NOT_SET;
+    client->list=-1;
     // how to set socket addr?
     return;
 }

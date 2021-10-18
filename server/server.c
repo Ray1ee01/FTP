@@ -23,7 +23,7 @@ int main(int argc, char **argv) {
     int port =6789;
     char sentence[256];
     char buf[BUFFER_SIZE];
-    strcpy(root,"/home/ubuntu");
+    strcpy(root,".");
     GetLocalIP(server_ip);
     printf("%s",server_ip);
     printf("Start receive argu\n");    
@@ -79,7 +79,7 @@ int main(int argc, char **argv) {
     FD_ZERO(&read_set);
     FD_ZERO(&write_set);
     FD_SET(listen_fd,&read_set);
-    if(FD_ISSET(listen_fd,&read_set))printf("listen fd is set\n1");
+    // if(FD_ISSET(listen_fd,&read_set))printf("listen fd is set\n1");
     char Cmd_Filter[256];
     // 持续监听连接请求
     int result;
@@ -196,25 +196,34 @@ int main(int argc, char **argv) {
                 }
                 else if(client_entities[i].tran_mode==PORT)
                 {
-                    if(connect(client_entities[i].tran_fd, (struct sockaddr *)&client_entities[i].addr, sizeof(client_entities[i].addr))==-1)
+                    if(client_entities[i].state==ABOUT_TO_TRANSFER)
                     {
-                        close(client_entities[i].tran_fd);
-                        printf("port connect error\n");
-                        post_msg(client_entities[i].conn_fd,425,NULL);
+                        if(connect(client_entities[i].tran_fd, (struct sockaddr *)&client_entities[i].addr, sizeof(client_entities[i].addr))==-1)
+                        {
+                            close(client_entities[i].tran_fd);
+                            printf("port connect error\n");
+                            post_msg(client_entities[i].conn_fd,425,NULL);
+                        }
+                        else
+                        {
+                            client_entities[i].state=TRANSFER;
+                        }
                     }
-                    else
+                    else if(client_entities[i].state==TRANSFER)
                     {
-                        client_entities[i].state=TRANSFER;
+                        printf("PORT RECV\n");
+                        FILE* file=fopen(client_entities[i].filepath,"ab+");
+                        fseek(file,client_entities[i].offset,SEEK_SET);
+                        recv_file(&client_entities[i],file,buf);
                     }
-                    //to do upload
                 }
-                else
-                {
-                    FD_CLR(client_entities[i].tran_fd,&read_set);
-                    FD_CLR(client_entities[i].tran_fd,&write_set);
-                    client_entities[i].tran_fd=-1;
-                    client_entities[i].tran_mode=NOT_SET;
-                }
+                // else
+                // {
+                //     FD_CLR(client_entities[i].tran_fd,&read_set);
+                //     FD_CLR(client_entities[i].tran_fd,&write_set);
+                //     client_entities[i].tran_fd=-1;
+                //     client_entities[i].tran_mode=NOT_SET;
+                // }
             }
             else if(FD_ISSET(client_entities[i].tran_fd,&t_write))
             {
@@ -240,19 +249,44 @@ int main(int argc, char **argv) {
                 }
                 else if(client_entities[i].tran_mode==PORT)
                 {
-                    client_entities[i].state=TRANSFER;
-                    FILE* file=fopen(client_entities[i].filepath,"rb+");
-                    fseek(file,client_entities[i].offset,SEEK_SET);
-                    send_file(&client_entities[i],file,buf);
-                    //to do download
+                    // printf("get port client\n");
+                    // printf("%d\n",client_entities[i].state);
+                    // return 0;
+                    if(client_entities[i].state==ABOUT_TO_TRANSFER)
+                    {
+                        if(connect(client_entities[i].tran_fd, (struct sockaddr *)&client_entities[i].addr, sizeof(client_entities[i].addr))==-1)
+                        {
+                            close(client_entities[i].tran_fd);
+                            printf("port connect error\n");
+                            post_msg(client_entities[i].conn_fd,425,NULL);
+                        }
+                        else
+                        {
+                            client_entities[i].state=TRANSFER;
+                        }
+                    }
+                    else if(client_entities[i].state==TRANSFER)
+                    {
+                        if(client_entities[i].list==NOT_LIST)
+                        {
+                            printf("PORT send\n");
+                            FILE* file=fopen(client_entities[i].filepath,"rb+");
+                            fseek(file,client_entities[i].offset,SEEK_SET);
+                            send_file(&client_entities[i],file,buf);
+                        }
+                        else
+                        {
+                            send_list();//todo 
+                        }
+                    }
                 }
-                else
-                {
-                    FD_CLR(client_entities[i].tran_fd,&read_set);
-                    FD_CLR(client_entities[i].tran_fd,&write_set);
-                    client_entities[i].tran_fd=-1;
-                    client_entities[i].tran_mode=NOT_SET;
-                }
+                // else
+                // {
+                //     FD_CLR(client_entities[i].tran_fd,&read_set);
+                //     FD_CLR(client_entities[i].tran_fd,&write_set);
+                //     client_entities[i].tran_fd=-1;
+                //     client_entities[i].tran_mode=NOT_SET;
+                // }
             }
         }
 

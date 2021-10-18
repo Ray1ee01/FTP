@@ -70,9 +70,7 @@ void post_msg(int fd,int code, char *pattern)
         strcpy(typical,"File status okay; about to open data connection");
         break;
     case 200:
-        memset(typical,0,sizeof(typical));
-        //typical=NULL;
-        // strcpy(typical,NULL);
+        strcpy(typical,"Type set to I.");
         break;
     case 212:
         strcpy(typical,"Directory status");
@@ -81,7 +79,7 @@ void post_msg(int fd,int code, char *pattern)
         strcpy(typical,"File status");
         break;
     case 215:
-        strcpy(typical,"system type");
+        strcpy(typical,"UNIX Type: L8");
         break;
     case 220:
         strcpy(typical,"Servive ready for new user");
@@ -146,9 +144,16 @@ void post_msg(int fd,int code, char *pattern)
         // strcpy(typical,NULL);
         break;
     }
-    sprintf(msg,"%d,%s %s\r\n",code,typical,pattern);
-    printf("Send msg %s\n",typical);
-    printf("Send msg %s\n",pattern);
+    if(pattern!=NULL)
+    {
+        sprintf(msg,"%d %s %s\r\n",code,typical,pattern);
+    }
+    else
+    {
+        sprintf(msg,"%d %s\r\n",code,typical);
+    }
+    // printf("Send msg %s\n",typical);
+    // printf("Send msg %s\n",pattern);
     send(fd,msg,strlen(msg),0);// why send duplicate last msg?
     return;
 }
@@ -186,35 +191,46 @@ int send_file(Client *client, FILE *file, char *buf)
     return 1; // success
 }
 
-int write_file(Client *client, FILE *file, char *buf)
+int recv_file(Client *client, FILE *file, char *buf)
 {
     bzero(buf,BUFFER_SIZE);
     int len=0;
-    while((len=get_data(client->tran_fd,buf,BUFFER_SIZE))>0)
+    if(client->state!=TRANSFER)
     {
-        if(client->state!=TRANSFER)
+        return -1;
+    }
+    else
+    {
+        while((len=get_data(client->tran_fd,buf,BUFFER_SIZE))>0)
         {
-            return -1; // state conflict
-        }
-        else
-        {
-            printf("len:%d,buf:%s\n",len,buf);
-            if(post_data(client->tran_fd,buf,len)==-1) // to do reliable send
+            printf("buffer: %s",buf);
+            if((len=fwrite(buf,sizeof(char),BUFFER_SIZE,file))<0)
             {
-                printf("Send:%s Failed./n",buf);
+                printf("Recv:%s Failed./n",buf);
                 client->state=ABOUT_TO_TRANSFER;
                 return 0; // send fail
             }
             client->offset+=len;
             bzero(buf,BUFFER_SIZE);
         }
+        fclose(file);
+        printf("File transfer end\n");
+        client->state=NOT_SET;
+        FD_CLR(client->tran_fd,&write_set);
+        FD_CLR(client->tran_fd,&read_set);
+        client->offset=0;
+        return 1; // success
     }
-    fclose(file);
-    printf("File transfer end\n");
-    client->state=NOT_SET;
-    FD_CLR(client->tran_fd,&write_set);
-    FD_CLR(client->tran_fd,&read_set);
+}
 
-    client->offset=0;
-    return 1; // success
+//https://blog.csdn.net/clarkness/article/details/88721769
+int send_list(Client* client,char* buf)
+{
+    FILE *file=NULL;
+    char cmd[256];
+    sprintf(cmd,"ls -l %s",client->filepath);
+    file = popen(cmd,'r');
+    fgets(buf,sizeof(buf),file);
+    printf("%s",buf);
+    pclose(file);
 }

@@ -72,6 +72,15 @@ int main(int argc, char **argv) {
 			close(trans_fd);
 			break;
 		}
+		if(state==2)
+		{
+			printf("%d\n",state);
+			char msg[]="123123";
+			printf("send %s\n",msg);
+			write(trans_fd,msg,255);
+			close(trans_fd);
+			break;
+		}
 		//ªÒ»°º¸≈Ã ‰»Î
 		if(state==0)
 		{
@@ -99,6 +108,17 @@ int main(int argc, char **argv) {
 			}
 			printf("Data connection build\n");
 			state=1;
+			memset(&sentence,0,sizeof(sentence));
+		}
+		else if (sentence[1]=='T')
+		{
+			printf("Get Port\n");
+			if ((trans_fd = accept(listen_fd, NULL, NULL)) == -1) {
+				printf("Error accept(): %s(%d)\n", strerror(errno), errno);
+				return -1;
+			}
+			printf("Data connection build\n");
+			state=2;
 			memset(&sentence,0,sizeof(sentence));
 		}
 

@@ -41,6 +41,9 @@
 #define ABOUT_TO_TRANSFER 0
 #define TRANSFER 1
 
+// list
+#define NOT_LIST -1
+#define LIST 0
 
 // constant for FTP system
 #define MAX_CLIENTS 64
@@ -58,6 +61,7 @@ typedef struct
     int state;               // 是否在处理命令
     char filepath[128];      // 完整的文件路径 root+params
     int offset;              // 文件传输初始偏移量
+    int list;
     // todo
 }Client;
 Client client_entities[MAX_CLIENTS];
