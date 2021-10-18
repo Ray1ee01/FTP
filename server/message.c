@@ -50,7 +50,7 @@ int post_data(int fd, char *msg, int max_len)
         } else if (n == 0) {
             break;
         } else {
-            p+=n
+            p+=n;
         }
     }
     return 0;
@@ -159,7 +159,7 @@ int send_file(Client *client, FILE *file, char *buf)
 {
     bzero(buf,BUFFER_SIZE);
     int len=0;
-    while(len=fread(buf,sizeof(char),BUFFER_SIZE,file)>0)
+    while((len=fread(buf,sizeof(char),BUFFER_SIZE,file))>0) // 括号！
     {
         if(client->state!=TRANSFER)
         {
@@ -213,6 +213,8 @@ int write_file(Client *client, FILE *file, char *buf)
     printf("File transfer end\n");
     client->state=NOT_SET;
     FD_CLR(client->tran_fd,&write_set);
+    FD_CLR(client->tran_fd,&read_set);
+
     client->offset=0;
     return 1; // success
 }
