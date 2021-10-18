@@ -79,6 +79,9 @@ void post_msg(int fd,int code, char *pattern)
     case 332:
         strcpy(typical,"Need account for login");
         break;
+    case 425:
+        strcpy(typical,"Can't open data connection");
+        break;
     case 426:
         strcpy(typical,"Connection closed; transfer aborted");
         break;
@@ -99,6 +102,9 @@ void post_msg(int fd,int code, char *pattern)
         break;
     case 530:
         strcpy(typical,"Not logged in.");
+        break;
+    case 550:
+        strcpy(typical,"Requested action not taken. File unavailable.");
         break;
     default:
         memset(typical,0,sizeof(typical));
@@ -127,7 +133,8 @@ int send_file(Client *client, FILE *file, char *buf)
         }
         else
         {
-            if(send(client->tran_fd,buf,len,0)<0)
+            printf("len:%d,buf:%s\n",len,buf);
+            if(send(client->tran_fd,buf,len,0)<0) // to do reliable send
             {
                 printf("Send:%s Failed./n",buf);
                 client->state=ABOUT_TO_TRANSFER;
@@ -139,6 +146,8 @@ int send_file(Client *client, FILE *file, char *buf)
     }
     fclose(file);
     printf("File transfer end\n");
+    client->state=NOT_SET;
+    FD_CLR(client->tran_fd,&write_set);
     client->offset=0;
     return 1; // success
 }

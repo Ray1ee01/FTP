@@ -179,17 +179,34 @@ int main(int argc, char **argv) {
             {
                 if(client_entities[i].tran_mode== PASV)
                 {
-                    int tran_fd=AcceptConnection(client_entities);
-                    if (tran_fd==-1)
+                    if (client_entities[i].state==ABOUT_TO_TRANSFER)
                     {
-                        post_msg(client_entities[i].conn_fd,425,NULL);
-                        continue;
+                        int tran_fd=AcceptConnection(client_entities);
+                        if (tran_fd==-1)
+                        {
+                            post_msg(client_entities[i].conn_fd,425,NULL);
+                            continue;
+                        }
+                        client_entities[i].state=TRANSFER;
                     }
-                    client_entities[i].state=ABOUT_TO_TRANSFER;
+                    else if(client_entities[i].state==TRANSFER)
+                    {
+                        //todo upload
+                    }
                 }
                 else if(client_entities[i].tran_mode==PORT)
                 {
-                    client_entities[i].state=ABOUT_TO_TRANSFER;
+                    if(connect(client_entities[i].tran_fd, (struct sockaddr *)&client_entities[i].addr, sizeof(client_entities[i].addr))==-1)
+                    {
+                        close(client_entities[i].tran_fd);
+                        printf("port connect error\n");
+                        post_msg(client_entities[i].conn_fd,425,NULL);
+                    }
+                    else
+                    {
+                        client_entities[i].state=TRANSFER;
+                    }
+                    //to do upload
                 }
                 else
                 {
@@ -197,18 +214,44 @@ int main(int argc, char **argv) {
                     FD_CLR(client_entities[i].tran_fd,&write_set);
                     client_entities[i].tran_fd=-1;
                     client_entities[i].tran_mode=NOT_SET;
-
                 }
-                //to do receive file
             }
             else if(FD_ISSET(client_entities[i].tran_fd,&t_write))
             {
-                if (client_entities[i].state==ABOUT_TO_TRANSFER)
+                if(client_entities[i].tran_mode== PASV)
+                {
+                    if (client_entities[i].state==ABOUT_TO_TRANSFER)
+                    {
+                        int tran_fd=AcceptConnection(client_entities);
+                        if (tran_fd==-1)
+                        {
+                            post_msg(client_entities[i].conn_fd,425,NULL);
+                            continue;
+                        }
+                        client_entities[i].state=TRANSFER;
+                    }
+                    else if(client_entities[i].state==TRANSFER)
+                    {
+                        // todo download
+                        // FILE* file=fopen(client_entities[i].filepath,"rb+");
+                        // fseek(file,client_entities[i].offset,SEEK_SET);
+                        // send_file(&client_entities[i],file,buf);
+                    }
+                }
+                else if(client_entities[i].tran_mode==PORT)
                 {
                     client_entities[i].state=TRANSFER;
                     FILE* file=fopen(client_entities[i].filepath,"rb+");
                     fseek(file,client_entities[i].offset,SEEK_SET);
                     send_file(&client_entities[i],file,buf);
+                    //to do download
+                }
+                else
+                {
+                    FD_CLR(client_entities[i].tran_fd,&read_set);
+                    FD_CLR(client_entities[i].tran_fd,&write_set);
+                    client_entities[i].tran_fd=-1;
+                    client_entities[i].tran_mode=NOT_SET;
                 }
             }
         }

@@ -63,7 +63,7 @@ typedef struct
 Client client_entities[MAX_CLIENTS];
 
 char server_ip[16];
-char root[16];
+char root[128];
 
 fd_set read_set,write_set;
 #endif

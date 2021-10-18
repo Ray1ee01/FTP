@@ -3,7 +3,7 @@
 #include "global.h"
 
 
-CommandFilter Cmd_Filters[5]={
+CommandFilter Cmd_Filters[6]={
     {
         "ABOR",
         CmdABOR
@@ -24,12 +24,16 @@ CommandFilter Cmd_Filters[5]={
         "PASV",
         CmdPASV
     },
+    {
+        "RETR",
+        CmdRETR
+    }
 };
 
 void HandleCommand(const char* cmd,const char* params,Client* client)
 {
     printf("handle cmd %s\n",&cmd);
-    for (int i=0;i<5;i++)
+    for (int i=0;i<6;i++)
     {
         if (strcmp(cmd,Cmd_Filters[i].name)==0)
         {
@@ -106,7 +110,7 @@ void CmdPORT(const char* params,Client *client)
             post_msg(client->conn_fd,501,NULL);
         }
         //The RFC 959 formal syntax does not allow any of these numbers to be 0. The formal syntax is wrong.
-        else if (h1<=0||h1>255||h2<=0||h2>255||h3<=0||h3>255||h4<=0||h4>255||p1<=0||p1>255||p2<=0||p2>255)
+        else if (h1<0||h1>255||h2<0||h2>255||h3<0||h3>255||h4<0||h4>255||p1<0||p1>255||p2<0||p2>255)
         {
             post_msg(client->conn_fd,501,NULL);
         }
@@ -116,12 +120,14 @@ void CmdPORT(const char* params,Client *client)
         }
         else
         {
+            client->tran_mode=PORT;
             char ip[32];
             sprintf(ip,"%d.%d.%d.%d",h1,h2,h3,h4);
             //设置目标主机的ip和port
             memset(&(client->addr), 0, sizeof(client->addr));
             client->addr.sin_family = AF_INET;
             client->addr.sin_port = htons((p1<<8)+p2);
+            printf("%d\n",(p1<<8)+p2);
             if (inet_pton(AF_INET,ip, &(client->addr.sin_addr)) <= 0) {			//转换ip地址:点分十进制-->二进制
                 printf("Error inet_pton(): %s(%d)\n", strerror(errno), errno);
                 post_msg(client->conn_fd,501,NULL);
@@ -131,8 +137,6 @@ void CmdPORT(const char* params,Client *client)
                 printf("Error socket(): %s(%d)\n", strerror(errno), errno);
                 post_msg(client->conn_fd, 500, NULL);
             }
-            //to do manage tran_fd
-
             post_msg(client->conn_fd,200,"PORT success.");
         }
     }
@@ -180,7 +184,6 @@ void CmdRETR(const char *params,Client* client)
 {   
     // todo if server is transfering another file to the client?
     FILE *file;
-    strcpy(client->filepath,strcat(root,params));
     if (params==NULL)
     {
         post_msg(client->conn_fd,504,NULL);
@@ -188,7 +191,9 @@ void CmdRETR(const char *params,Client* client)
     else
     {
         FILE *file;
-        strcpy(client->filepath,strcat(root,params));
+        printf("%s\n",params);
+        sprintf(client->filepath,"%s/%s",root,params);
+        printf("%s\n",client->filepath);
         if((file=fopen(client->filepath,"rb+"))==NULL)
         {
             post_msg(client->conn_fd,550,NULL);
@@ -197,6 +202,8 @@ void CmdRETR(const char *params,Client* client)
         {
             fclose(file);
             client->state=ABOUT_TO_TRANSFER;
+            FD_SET(client->tran_fd,&write_set);
+            FD_SET(client->tran_fd,&read_set);
         }
     }
 }
