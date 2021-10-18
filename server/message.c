@@ -20,7 +20,41 @@ void get_msg(int fd, char *msg, int max_len)
     }
     msg[p-1]='\0'; // add \0
 }
+int get_data(int fd, char *msg, int max_len)
+{
+    int p = 0;
+    while (1) {
+        int n = read(fd, msg + p,max_len - p);
+        if (n < 0) {
+            // printf("Error read(): %s(%d)\n", strerror(errno), errno);
+            // close(conn_fd);
+            continue;
+        } else if (n == 0) {
+            break;
+        } else {
+            p += n;
+        }
+    }
+    return p;
+}
 
+int post_data(int fd, char *msg, int max_len)
+{
+    int p = 0;
+    while (1) {
+        int n = write(fd, msg + p,max_len - p);
+        if (n < 0) {
+            // printf("Error read(): %s(%d)\n", strerror(errno), errno);
+            // close(conn_fd);
+            return -1;
+        } else if (n == 0) {
+            break;
+        } else {
+            p+=n
+        }
+    }
+    return 0;
+}
 
 // http://www.tcpipguide.com/free/t_FTPRepliesReplyCodeFormatandImportantReplyCodes-4.htm
 void post_msg(int fd,int code, char *pattern)
@@ -134,7 +168,38 @@ int send_file(Client *client, FILE *file, char *buf)
         else
         {
             printf("len:%d,buf:%s\n",len,buf);
-            if(send(client->tran_fd,buf,len,0)<0) // to do reliable send
+            if(post_data(client->tran_fd,buf,len)==-1) // to do reliable send
+            {
+                printf("Send:%s Failed./n",buf);
+                client->state=ABOUT_TO_TRANSFER;
+                return 0; // send fail
+            }
+            client->offset+=len;
+            bzero(buf,BUFFER_SIZE);
+        }
+    }
+    fclose(file);
+    printf("File transfer end\n");
+    client->state=NOT_SET;
+    FD_CLR(client->tran_fd,&write_set);
+    client->offset=0;
+    return 1; // success
+}
+
+int write_file(Client *client, FILE *file, char *buf)
+{
+    bzero(buf,BUFFER_SIZE);
+    int len=0;
+    while((len=get_data(client->tran_fd,buf,BUFFER_SIZE))>0)
+    {
+        if(client->state!=TRANSFER)
+        {
+            return -1; // state conflict
+        }
+        else
+        {
+            printf("len:%d,buf:%s\n",len,buf);
+            if(post_data(client->tran_fd,buf,len)==-1) // to do reliable send
             {
                 printf("Send:%s Failed./n",buf);
                 client->state=ABOUT_TO_TRANSFER;

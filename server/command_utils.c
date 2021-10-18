@@ -74,7 +74,7 @@ void CmdUSER(const char* params,Client *client)
     }
     else
     {
-        client->login=NEED_PASS;                // 不论是否已登录，强制更新登录状态。
+        client->login=NEED_PASS;            // 不论是否已登录，强制更新登录状态。
         post_msg(client->conn_fd,331,NULL); // 即使已在线，也不做下线再登录的处理。
     }
     return;
