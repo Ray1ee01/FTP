@@ -10,6 +10,7 @@ void Init_Client(Client* client)
     client->tran_mode=NOT_SET;
     client->state=NOT_SET;
     client->list=-1;
+    memset(client->curdir,0,sizeof(client->curdir));
     // how to set socket addr?
     return;
 }

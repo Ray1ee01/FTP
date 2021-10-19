@@ -17,16 +17,16 @@
 
 int main(int argc, char **argv) {
     int listen_fd, conn_fd;		//监听socket和连接socket不一样，后者用于数据传输
-    struct sockaddr_in addr;
-    int p;
-    int len;
+    // struct sockaddr_in addr;
+    // int p;
+    // int len;
     int port =6789;
     char sentence[256];
     char buf[BUFFER_SIZE];
-    strcpy(root,".");
+    strcpy(root,"/tmp");
     GetLocalIP(server_ip);
-    printf("%s",server_ip);
-    printf("Start receive argu\n");    
+    // printf("%s",server_ip);
+    // printf("Start receive argu\n");    
     // 接收命令行参数
     // honor code: https://blog.csdn.net/pengrui18/article/details/8078813
     const char *optstring="p:r:";
@@ -42,13 +42,13 @@ int main(int argc, char **argv) {
         switch(opt)
         {
         case 'p':
-            printf("Port: %s.\n",optarg);
+            // printf("Port: %s.\n",optarg);
             // TODO
             // 检测port是否可用 or 合法
             port=atoi(optarg);
             break;
         case 'r':
-            printf("Directory: %s.\n",optarg);
+            // printf("Directory: %s.\n",optarg);
             if (access(optarg, 0) == -1)
             {
                 printf("Directory %s does not exist or Permission denied \n",optarg);
@@ -63,7 +63,7 @@ int main(int argc, char **argv) {
     }
 
     listen_fd = ListenBind(port); // listen parameter?
-    printf("%d\n",listen_fd);
+    // printf("%d\n",listen_fd);
     // init all clients
     if(listen_fd==-1)
     {
@@ -80,7 +80,6 @@ int main(int argc, char **argv) {
     FD_ZERO(&write_set);
     FD_SET(listen_fd,&read_set);
     // if(FD_ISSET(listen_fd,&read_set))printf("listen fd is set\n1");
-    char Cmd_Filter[256];
     // 持续监听连接请求
     int result;
     // https://blog.csdn.net/y396397735/article/details/55004775
@@ -107,7 +106,7 @@ int main(int argc, char **argv) {
             }
             else
             {
-                printf("Conn_fd build\n");
+                // printf("Conn_fd build\n");
                 for(int i=0;i<MAX_CLIENTS;i++)
                 {
                     if(client_entities[i].conn_fd==-1)
@@ -118,8 +117,11 @@ int main(int argc, char **argv) {
                         post_msg(client_entities[i].conn_fd,220,NULL);
                         break;
                     }
-                    printf("No spare clients connection to use");
-                    close(client_entities[i].conn_fd);
+                    if(i==MAX_CLIENTS-1)
+                    {
+                        printf("No spare clients connection to use");
+                        close(conn_fd);
+                    }
                 }
             }
         }
@@ -131,8 +133,8 @@ int main(int argc, char **argv) {
             }
             if (FD_ISSET(client_entities[i].conn_fd,&t_read))
             {
-                printf("get avail client %d\n",i);
-                memset(&sentence,0,sizeof sentence);
+                // printf("get avail client %d\n",i);
+                memset(sentence,0,sizeof sentence);
                 get_msg(client_entities[i].conn_fd,sentence,255);
                 if(strlen(sentence)<=0)
                 {
@@ -156,7 +158,7 @@ int main(int argc, char **argv) {
                     memset(cmd,0,sizeof cmd);
                     memset(params,0,sizeof params);
                     int cmd_param = sscanf(sentence, "%s %s", cmd,params);
-                    printf("%s,%s\n",cmd,params);
+                    // printf("%s,%s\n",cmd,params);
                     if(cmd_param<=0)
                     {
                         post_msg(client_entities[i].conn_fd,500,NULL);
@@ -179,19 +181,28 @@ int main(int argc, char **argv) {
             {
                 if(client_entities[i].tran_mode== PASV)
                 {
+                    printf("%d\n",client_entities[i].state);
                     if (client_entities[i].state==ABOUT_TO_TRANSFER)
                     {
-                        int tran_fd=AcceptConnection(client_entities);
+                        post_msg(client_entities[i].conn_fd,150,NULL);
+                        int tran_fd=AcceptConnection(client_entities[i].tran_fd);
+                        printf("accept success\n");
                         if (tran_fd==-1)
                         {
+                            printf("tran_fd error\n");
                             post_msg(client_entities[i].conn_fd,425,NULL);
                             continue;
                         }
+                        FD_SET(tran_fd,&read_set);
+                        client_entities[i].tran_fd=tran_fd;
                         client_entities[i].state=TRANSFER;
                     }
                     else if(client_entities[i].state==TRANSFER)
                     {
-                        //todo upload
+                        printf("start transfer\n");
+                        FILE* file=fopen(client_entities[i].filepath,"ab+");
+                        fseek(file,client_entities[i].offset,SEEK_SET);
+                        recv_file(&client_entities[i],file,buf);
                     }
                 }
                 else if(client_entities[i].tran_mode==PORT)
@@ -206,12 +217,16 @@ int main(int argc, char **argv) {
                         }
                         else
                         {
+                            post_msg(client_entities[i].conn_fd,150,NULL);
                             client_entities[i].state=TRANSFER;
+                            FILE* file=fopen(client_entities[i].filepath,"ab+");
+                            fseek(file,client_entities[i].offset,SEEK_SET);
+                            recv_file(&client_entities[i],file,buf);
                         }
                     }
                     else if(client_entities[i].state==TRANSFER)
                     {
-                        printf("PORT RECV\n");
+                        // printf("PORT RECV\n");
                         FILE* file=fopen(client_entities[i].filepath,"ab+");
                         fseek(file,client_entities[i].offset,SEEK_SET);
                         recv_file(&client_entities[i],file,buf);
@@ -231,20 +246,37 @@ int main(int argc, char **argv) {
                 {
                     if (client_entities[i].state==ABOUT_TO_TRANSFER)
                     {
-                        int tran_fd=AcceptConnection(client_entities);
+                        post_msg(client_entities[i].conn_fd,150,NULL);
+                        int tran_fd=AcceptConnection(client_entities[i].tran_fd);
                         if (tran_fd==-1)
                         {
                             post_msg(client_entities[i].conn_fd,425,NULL);
                             continue;
                         }
-                        client_entities[i].state=TRANSFER;
-                    }
+                        FD_SET(tran_fd,&read_set);
+                        client_entities[i].tran_fd=tran_fd;
+                        client_entities[i].state=TRANSFER;                    }
                     else if(client_entities[i].state==TRANSFER)
                     {
-                        // todo download
-                        // FILE* file=fopen(client_entities[i].filepath,"rb+");
-                        // fseek(file,client_entities[i].offset,SEEK_SET);
-                        // send_file(&client_entities[i],file,buf);
+                        if(client_entities[i].list==NOT_LIST)
+                        {
+                            FILE* file=fopen(client_entities[i].filepath,"rb+");
+                            printf("%s\n",client_entities[i].filepath);
+                            if(file==NULL)
+                            {
+                                post_msg(client_entities[i].conn_fd,451,NULL);
+                            }
+                            else
+                            {
+                                printf("send_file\n");
+                                send_file(&client_entities[i],file,buf);
+                                fclose(file);
+                            }
+                        }
+                        else
+                        {
+                            send_list(&client_entities[i],buf);//todo 
+                        }
                     }
                 }
                 else if(client_entities[i].tran_mode==PORT)
@@ -269,14 +301,25 @@ int main(int argc, char **argv) {
                     {
                         if(client_entities[i].list==NOT_LIST)
                         {
-                            printf("PORT send\n");
+                            //printf("PORT send\n");
+                            post_msg(client_entities[i].conn_fd,150,NULL);
                             FILE* file=fopen(client_entities[i].filepath,"rb+");
-                            fseek(file,client_entities[i].offset,SEEK_SET);
-                            send_file(&client_entities[i],file,buf);
+                            printf("%s\n",client_entities[i].filepath);
+                            if(file==NULL)
+                            {
+                                post_msg(client_entities[i].conn_fd,451,NULL);
+                            }
+                            else
+                            {
+                                printf("send_file\n");
+                                // fseek(file,client_entities[i].offset,SEEK_SET);
+                                send_file(&client_entities[i],file,buf);
+                                fclose(file);
+                            }
                         }
                         else
                         {
-                            send_list();//todo 
+                            send_list(&client_entities[i],buf);//todo 
                         }
                     }
                 }

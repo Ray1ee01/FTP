@@ -4,7 +4,7 @@
 #include "global.h"
 
 
-CommandFilter Cmd_Filters[11]={
+CommandFilter Cmd_Filters[17]={
     {
         "ABOR",
         CmdABOR
@@ -48,18 +48,43 @@ CommandFilter Cmd_Filters[11]={
     {
         "LIST",
         CmdLIST
+    },
+    {
+        "MKD",
+        CmdMKD
+    },
+    {
+        "CWD",
+        CmdCWD
+    },
+    {
+        "PWD",
+        CmdPWD
+    },
+    {
+        "RMD",
+        CmdRMD
+    },
+    {
+        "RNFR",
+        CmdRNFR
+    },
+    {
+        "RNTO",
+        CmdRNTO
     }
 };
 
 void HandleCommand(const char* cmd,const char* params,Client* client)
 {
-    printf("handle cmd %s\n",&cmd);
-    for (int i=0;i<11;i++)
+    // printf("handle cmd %s\n",&cmd);
+    for (int i=0;i<17;i++)
     {
         if (strcmp(cmd,Cmd_Filters[i].name)==0)
         {
-            if (client->state==-1)
+            if (client->state!=TRANSFER)
             {
+                printf("cmd %s\n",cmd);
                 Cmd_Filters[i].fptr(params,client);
                 break;
             }
@@ -75,7 +100,6 @@ void CmdABOR(const char* params,Client *client)
 {
     if (client->state!=-1)
     {
-        // todo 终止当前指令
         post_msg(client->conn_fd,426,NULL);
     }
     else
@@ -102,7 +126,7 @@ void CmdUSER(const char* params,Client *client)
 
 void CmdPASS(const char* params,Client *client)
 {
-    printf("get Cmd success\n");
+    // printf("get Cmd success\n");
     if(client->login!=NEED_PASS)
     {
         post_msg(client->conn_fd,503,NULL);
@@ -147,7 +171,7 @@ void CmdPORT(const char* params,Client *client)
             memset(&(client->addr), 0, sizeof(client->addr));
             client->addr.sin_family = AF_INET;
             client->addr.sin_port = htons((p1<<8)+p2);
-            printf("%d\n",(p1<<8)+p2);
+            // printf("%d\n",(p1<<8)+p2);
             if (inet_pton(AF_INET,ip, &(client->addr.sin_addr)) <= 0) {			//转换ip地址:点分十进制-->二进制
                 printf("Error inet_pton(): %s(%d)\n", strerror(errno), errno);
                 post_msg(client->conn_fd,501,NULL);
@@ -187,14 +211,13 @@ void CmdPASV(const char *params,Client* client)
         sscanf(server_ip,"%d.%d.%d.%d" ,&h1,&h2,&h3,&h4);
         p1 = port / (1<<8);
         p2 = port % (1<<8);
-        char* msg[128];
+        char msg[128];
         sprintf(msg,"(%d,%d,%d,%d,%d,%d)",h1,h2,h3,h4,p1,p2);
         
-        int tran_fd;
         printf("to listen tran port\n");
         client->tran_fd = ListenBind(port);
-        FD_SET(client->tran_fd,&read_set);
-        FD_SET(client->tran_fd,&write_set);
+        // FD_SET(client->tran_fd,&read_set);
+        // FD_SET(client->tran_fd,&write_set);
         post_msg(client->conn_fd,227,msg);
     }
     return;
@@ -203,7 +226,7 @@ void CmdPASV(const char *params,Client* client)
 void CmdRETR(const char *params,Client* client)
 {   
     // todo if server is transfering another file to the client?
-    FILE *file;
+    // FILE *file;
     if (params==NULL)
     {
         post_msg(client->conn_fd,504,NULL);
@@ -211,9 +234,9 @@ void CmdRETR(const char *params,Client* client)
     else
     {
         FILE *file;
-        printf("%s\n",params);
+        // printf("%s\n",params);
         sprintf(client->filepath,"%s/%s",root,params);
-        printf("%s\n",client->filepath);
+        // printf("%s\n",client->filepath);
         if((file=fopen(client->filepath,"rb+"))==NULL)
         {
             post_msg(client->conn_fd,550,NULL);
@@ -222,8 +245,8 @@ void CmdRETR(const char *params,Client* client)
         {
             fclose(file);
             client->state=ABOUT_TO_TRANSFER;
-            printf("retr true\n");
-            printf("%d\n",client->state);
+            //printf("retr true\n");
+            //printf("%d\n",client->state);
             FD_SET(client->tran_fd,&write_set);
         }
     }
@@ -232,7 +255,7 @@ void CmdRETR(const char *params,Client* client)
 void CmdSTOR(const char *params,Client* client)
 {   
     // todo if server is transfering another file to the client?
-    FILE *file;
+    // FILE *file;
     if (params==NULL)
     {
         post_msg(client->conn_fd,504,NULL);
@@ -240,9 +263,9 @@ void CmdSTOR(const char *params,Client* client)
     else
     {
         FILE *file;
-        printf("%s\n",params);
+        // printf("%s\n",params);
         sprintf(client->filepath,"%s/%s",root,params);
-        printf("%s\n",client->filepath);
+        // printf("%s\n",client->filepath);
         if((file=fopen(client->filepath,"ab+"))==NULL)
         {
             post_msg(client->conn_fd,550,NULL);
@@ -250,10 +273,12 @@ void CmdSTOR(const char *params,Client* client)
         else
         {
             fclose(file);
+            printf("file open success\n");
             client->state=ABOUT_TO_TRANSFER;
             FD_SET(client->tran_fd,&read_set);
         }
     }
+    return;
 }
 void CmdSYST(const char *params,Client* client)
 {
@@ -293,17 +318,184 @@ void CmdQUIT(const char *params,Client* client)
 }
 void CmdLIST(const char *params,Client* client)
 {
-    char path[256];
+    // char path[256];
     if(params==NULL)
     {
-        sprintf(client->filepath,"%s");
+        if(strlen(client->curdir)==0)
+        {
+            sprintf(client->filepath,"%s",root);
+        }
+        else
+        {
+            sprintf(client->filepath,"%s",client->curdir);
+        }
     }
     else
     {
-        sprintf(client->filepath,"%s/%s",root,params);
+        if(strlen(client->curdir)==0)
+        {
+            sprintf(client->filepath,"%s/%s",root,params);
+        }
+        else
+        {
+            sprintf(client->filepath,"%s/%s",client->curdir,params);
+        }
     }
     client->list=LIST;
     client->state=ABOUT_TO_TRANSFER;
     FD_SET(client->tran_fd,&write_set);
     return;
 }
+
+void CmdMKD(const char *params,Client* client)
+{
+    char path[256];
+    if (params == NULL)
+    {
+        post_msg(client->conn_fd,504,NULL);
+    }
+    sprintf(path,"%s/%s",root,params);
+    if (mkdir(path, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH) == 0) 
+    {
+        post_msg(client->conn_fd, 250, path);
+    }
+    else 
+    {
+        post_msg(client->conn_fd, 550, NULL);
+    }
+    return ;
+}
+
+void CmdCWD(const char *params,Client* client)
+{
+    char path[256];
+    if (params == NULL)
+    {
+        post_msg(client->conn_fd,504,NULL);
+    }
+    else
+    {
+        sprintf(path,"%s/%s",root,params);
+        printf("%s",client->curdir);
+        if(access(path,0)!=0)
+        {
+            post_msg(client->conn_fd,550,NULL);
+        }
+        else
+        {
+            strcpy(client->curdir,path);
+            post_msg(client->conn_fd,250,NULL);
+        }
+    }
+    return;
+}
+
+void CmdPWD(const char *params,Client* client)
+{
+    if (params!=NULL)
+    {
+        printf("handle PWD nullptr\n");
+        post_msg(client->conn_fd,504,NULL);
+    }
+    else
+    {
+        printf("handle PWD\n");
+        post_msg(client->conn_fd,257,client->curdir);
+    }
+}
+
+void CmdRMD(const char *params,Client* client)
+{
+    char path[256];
+    if (params==NULL)
+    {
+        post_msg(client->conn_fd,504,NULL);
+    }
+    else
+    {
+        if(strlen(client->curdir)==0)
+        {
+            sprintf(path,"%s/%s",root,params);
+        }
+        else
+        {
+            sprintf(path,"%s/%s",client->curdir,params);
+        }
+        printf("%s\n",path);
+        if(access(path,0)==-1)
+        {
+            post_msg(client->conn_fd,550,NULL);
+        }
+        else
+        {
+            if(rmdir(path)!=0)
+            {
+                post_msg(client->conn_fd,550,NULL);
+            }
+            else
+            {
+                post_msg(client->conn_fd,250,NULL);
+            }
+        }
+    }
+    return;
+}
+void CmdRNFR(const char *params,Client* client)
+{
+    char path[256];
+    if (params==NULL)
+    {
+        post_msg(client->conn_fd,504,NULL);
+    }
+    else
+    {
+        if(strlen(client->curdir)==0)
+        {
+            sprintf(path,"%s/%s",root,params);
+        }
+        else
+        {
+            sprintf(path,"%s/%s",client->curdir,params);
+        }
+        printf("%s\n",path);
+        if(access(path,0)!=0)
+        {
+            post_msg(client->conn_fd,550,NULL);
+        }
+        else
+        {
+            sprintf(client->rnfile,"%s",path);
+            client->state=RNFR;
+            post_msg(client->conn_fd,350,NULL);
+        }
+    }
+    return;
+}
+void CmdRNTO(const char *params,Client* client)
+{
+    if (client->state!=RNFR)
+    {
+        printf("state error\n");
+        post_msg(client->conn_fd,503,NULL);
+    }
+    else if(params ==NULL)
+    {
+        printf("params error\n");
+        post_msg(client->conn_fd,504,NULL);
+    }
+    else
+    {
+        char cmd[256];
+        sprintf(cmd,"mv %s %s",client->rnfile,params);
+        printf("%s\n",cmd);
+        if (system(cmd)==-1)
+        {
+            post_msg(client->conn_fd,550,NULL);
+        }
+        else
+        {
+            post_msg(client->conn_fd,250,NULL);
+        }
+    }
+}
+

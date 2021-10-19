@@ -152,9 +152,9 @@ void post_msg(int fd,int code, char *pattern)
     {
         sprintf(msg,"%d %s\r\n",code,typical);
     }
-    // printf("Send msg %s\n",typical);
-    // printf("Send msg %s\n",pattern);
     send(fd,msg,strlen(msg),0);// why send duplicate last msg?
+    printf("Send msg %s\n",msg);
+    // printf("Send msg %s\n",pattern);
     return;
 }
 
@@ -162,38 +162,59 @@ void post_msg(int fd,int code, char *pattern)
 // https://www.runoob.com/cprogramming/c-function-fseek.html
 int send_file(Client *client, FILE *file, char *buf)
 {
-    bzero(buf,BUFFER_SIZE);
+    int code=226;
+    // bzero(buf,BUFFER_SIZE);
+    memset(buf,0,sizeof(buf));
     int len=0;
     while((len=fread(buf,sizeof(char),BUFFER_SIZE,file))>0) // 括号！
     {
+        // printf("len %d\n",len);
+        // printf("offset %d\n",client->offset);
+        // printf("%x\n",buf);
+        // if(fseek(file,client->offset,SEEK_SET)!=0)
+        // {
+        //     printf("seek error\n");
+        //     code=426;
+        //     break;
+        // }
         if(client->state!=TRANSFER)
         {
             return -1; // state conflict
         }
         else
         {
-            printf("len:%d,buf:%s\n",len,buf);
+            // printf("len:%d,buf:%s\n",len,buf);
             if(post_data(client->tran_fd,buf,len)==-1) // to do reliable send
             {
                 printf("Send:%s Failed./n",buf);
                 client->state=ABOUT_TO_TRANSFER;
-                return 0; // send fail
+                code=426;
+                break;
             }
             client->offset+=len;
-            bzero(buf,BUFFER_SIZE);
+            // bzero(buf,BUFFER_SIZE);
+            memset(buf,0,sizeof(buf));
+
         }
     }
-    fclose(file);
-    printf("File transfer end\n");
+    // fclose(file);
+    // printf("File transfer end\n");
+    // printf("%d\n",len);
     client->state=NOT_SET;
+    client->tran_mode=NOT_SET;
     FD_CLR(client->tran_fd,&write_set);
+    FD_CLR(client->tran_fd,&read_set);
     client->offset=0;
+    close(client->tran_fd);
+    post_msg(client->conn_fd,code,NULL);
     return 1; // success
 }
 
 int recv_file(Client *client, FILE *file, char *buf)
 {
-    bzero(buf,BUFFER_SIZE);
+    // bzero(buf,BUFFER_SIZE);
+    memset(buf,0,sizeof(buf));
+    int code=226;
     int len=0;
     if(client->state!=TRANSFER)
     {
@@ -203,22 +224,27 @@ int recv_file(Client *client, FILE *file, char *buf)
     {
         while((len=get_data(client->tran_fd,buf,BUFFER_SIZE))>0)
         {
-            printf("buffer: %s",buf);
+            // printf("buffer: %s",buf);
             if((len=fwrite(buf,sizeof(char),BUFFER_SIZE,file))<0)
             {
                 printf("Recv:%s Failed./n",buf);
                 client->state=ABOUT_TO_TRANSFER;
-                return 0; // send fail
+                code=451;
             }
+            fflush(file);
             client->offset+=len;
-            bzero(buf,BUFFER_SIZE);
+            // bzero(buf,BUFFER_SIZE);
+            memset(buf,0,sizeof(buf));
         }
         fclose(file);
         printf("File transfer end\n");
         client->state=NOT_SET;
+        client->tran_mode=NOT_SET;
         FD_CLR(client->tran_fd,&write_set);
         FD_CLR(client->tran_fd,&read_set);
         client->offset=0;
+        close(client->tran_fd);
+        post_msg(client->conn_fd,code,NULL);
         return 1; // success
     }
 }
@@ -226,11 +252,39 @@ int recv_file(Client *client, FILE *file, char *buf)
 //https://blog.csdn.net/clarkness/article/details/88721769
 int send_list(Client* client,char* buf)
 {
+    printf("sendlist\n");
     FILE *file=NULL;
     char cmd[256];
+    // printf("%s\n",client->filepath);
     sprintf(cmd,"ls -l %s",client->filepath);
-    file = popen(cmd,'r');
-    fgets(buf,sizeof(buf),file);
-    printf("%s",buf);
+    //  printf("%s\n",cmd);
+    file = popen(cmd,"r");
+    int len;
+    while((len=fread(buf,sizeof(char),BUFFER_SIZE,file))>0) // 括号！
+    {
+        if(client->state!=TRANSFER)
+        {
+            return -1; // state conflict
+        }
+        else
+        {
+            // printf("len:%d,buf:%s\n",len,buf);
+            if(post_data(client->tran_fd,buf,len)==-1) // to do reliable send
+            {
+                printf("Send:%s Failed./n",buf);
+                client->state=ABOUT_TO_TRANSFER;
+                return 0; // send fail
+            }
+            client->offset+=len;
+            // bzero(buf,BUFFER_SIZE);
+            memset(buf,0,sizeof(buf));
+
+        }
+    }
     pclose(file);
+    printf("File transfer end\n");
+    client->state=NOT_SET;
+    FD_CLR(client->tran_fd,&write_set);
+    client->offset=0;
+    return 1; // success
 }

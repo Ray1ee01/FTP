@@ -15,22 +15,22 @@ int main(int argc, char **argv) {
 	int len;
 	int p;
 
-	//´´½¨socket
+	//åˆ›å»ºsocket
 	if ((sockfd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) == -1) {
 		printf("Error socket(): %s(%d)\n", strerror(errno), errno);
 		return 1;
 	}
 
-	//ÉèÖÃÄ¿±êÖ÷»úµÄipºÍport
+	//è®¾ç½®ç›®æ ‡ä¸»æœºçš„ipå’Œport
 	memset(&addr, 0, sizeof(addr));
 	addr.sin_family = AF_INET;
 	addr.sin_port = htons(6789);
-	if (inet_pton(AF_INET, "127.0.0.1", &addr.sin_addr) <= 0) {			//×ª»»ipµØÖ·:µã·ÖÊ®½øÖÆ-->¶þ½øÖÆ
+	if (inet_pton(AF_INET, "127.0.0.1", &addr.sin_addr) <= 0) {			//è½¬æ¢ipåœ°å€:ç‚¹åˆ†åè¿›åˆ¶-->äºŒè¿›åˆ¶
 		printf("Error inet_pton(): %s(%d)\n", strerror(errno), errno);
 		return 1;
 	}
 	printf("about to connect\n");
-	//Á¬½ÓÉÏÄ¿±êÖ÷»ú£¨½«socketºÍÄ¿±êÖ÷»úÁ¬½Ó£©-- ×èÈûº¯Êý
+	//è¿žæŽ¥ä¸Šç›®æ ‡ä¸»æœºï¼ˆå°†socketå’Œç›®æ ‡ä¸»æœºè¿žæŽ¥ï¼‰-- é˜»å¡žå‡½æ•°
 	if (connect(sockfd, (struct sockaddr*)&addr, sizeof(addr)) < 0) {
 		printf("Error connect(): %s(%d)\n", strerror(errno), errno);
 		return 1;
@@ -43,17 +43,17 @@ int main(int argc, char **argv) {
 		return 1;
 	}
 
-	//ÉèÖÃÄ¿±êÖ÷»úµÄipºÍport
+	//è®¾ç½®ç›®æ ‡ä¸»æœºçš„ipå’Œport
 	memset(&addr, 0, sizeof(addr));
 	addr.sin_family = AF_INET;
 	addr.sin_port = htons(25600);
-	addr.sin_addr.s_addr = htonl(INADDR_ANY);	//¼àÌý"0.0.0.0"
-	//½«±¾»úµÄipºÍportÓësocket°ó¶¨
+	addr.sin_addr.s_addr = htonl(INADDR_ANY);	//ç›‘å¬"0.0.0.0"
+	//å°†æœ¬æœºçš„ipå’Œportä¸Žsocketç»‘å®š
 	if (bind(listen_fd, (struct sockaddr*)&addr, sizeof(addr)) == -1) {
 		printf("Error bind(): %s(%d)\n", strerror(errno), errno);
 		return -1;
 	}
-		//¿ªÊ¼¼àÌýsocket
+		//å¼€å§‹ç›‘å¬socket
 	if (listen(listen_fd, 128) == -1) {// Max Backlog
 		printf("Error listen(): %s(%d)\n", strerror(errno), errno);
 		return -1;
@@ -81,7 +81,7 @@ int main(int argc, char **argv) {
 			close(trans_fd);
 			break;
 		}
-		//»ñÈ¡¼üÅÌÊäÈë
+		//èŽ·å–é”®ç›˜è¾“å…¥
 		if(state==0)
 		{
 			fgets(sentence, 4096, stdin);
@@ -89,7 +89,7 @@ int main(int argc, char **argv) {
 			// sentence[len] = '\n';
 			// sentence[len + 1] = '\0';
 			printf("%s\n",sentence);
-			//°Ñ¼üÅÌÊäÈëÐ´Èësocket
+			//æŠŠé”®ç›˜è¾“å…¥å†™å…¥socket
 			int n;
 			n = write(sockfd,sentence,255);
 			printf("write success\n");
@@ -124,7 +124,7 @@ int main(int argc, char **argv) {
 
 		// p = 0;
 		// while (p < len) {
-		// 	int n = write(sockfd, sentence + p, len + 1 - p);		//writeº¯Êý²»±£Ö¤ËùÓÐµÄÊý¾ÝÐ´Íê£¬¿ÉÄÜÖÐÍ¾ÍË³ö
+		// 	int n = write(sockfd, sentence + p, len + 1 - p);		//writeå‡½æ•°ä¸ä¿è¯æ‰€æœ‰çš„æ•°æ®å†™å®Œï¼Œå¯èƒ½ä¸­é€”é€€å‡º
 		// 	if (n < 0) {
 		// 		printf("Error write(): %s(%d)\n", strerror(errno), errno);
 		// 		return 1;
@@ -134,12 +134,12 @@ int main(int argc, char **argv) {
 		// }
 	}
 
-	//Õ¥¸Ésocket½ÓÊÕµ½µÄÄÚÈÝ
+	//æ¦¨å¹²socketæŽ¥æ”¶åˆ°çš„å†…å®¹
 	p = 0;
 	while (1) {
 		int n = read(sockfd, sentence + p, 8191 - p);
 		if (n < 0) {
-			printf("Error read(): %s(%d)\n", strerror(errno), errno);	//read²»±£Ö¤Ò»´Î¶ÁÍê£¬¿ÉÄÜÖÐÍ¾ÍË³ö
+			printf("Error read(): %s(%d)\n", strerror(errno), errno);	//readä¸ä¿è¯ä¸€æ¬¡è¯»å®Œï¼Œå¯èƒ½ä¸­é€”é€€å‡º
 			return 1;
 		} else if (n == 0) {
 			break;
@@ -151,7 +151,7 @@ int main(int argc, char **argv) {
 		}
 	}
 
-	//×¢Òâ£ºread²¢²»»á½«×Ö·û´®¼ÓÉÏ'\0'£¬ÐèÒªÊÖ¶¯Ìí¼Ó
+	//æ³¨æ„ï¼šreadå¹¶ä¸ä¼šå°†å­—ç¬¦ä¸²åŠ ä¸Š'\0'ï¼Œéœ€è¦æ‰‹åŠ¨æ·»åŠ 
 	sentence[p - 1] = '\0';
 
 	printf("FROM SERVER: %s", sentence);

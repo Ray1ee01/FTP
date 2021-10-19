@@ -39,9 +39,9 @@ def create_test_file(filename):
 def test(port=6789, directory='/tmp'):
   global credit
   if port == 6789 and directory == '/tmp':
-    server = subprocess.Popen('./server/server', stdout=subprocess.PIPE)
+    server = subprocess.Popen('./servercopy', stdout=subprocess.PIPE)
   else:
-    server = subprocess.Popen(['./server/server', '-port', '%d' % port, '-root', directory], stdout=subprocess.PIPE)
+    server = subprocess.Popen(['./servercopy', '-port', '%d' % port, '-root', directory], stdout=subprocess.PIPE)
   time.sleep(0.1)
   try:
     ftp = FTP()
@@ -69,8 +69,10 @@ def test(port=6789, directory='/tmp'):
     ftp.set_pasv(False)
     print('port download')
     if not ftp.retrbinary('RETR %s' % filename, open(filename, 'wb').write).startswith('226'):
+    # print(ftp.retrbinary('RETR %s' % filename, open(filename, 'wb').write,100))
       print ('Bad response for RETR')
       credit -= minor
+    print('pass port retr')
     if not filecmp.cmp(filename, directory + '/' + filename):
       print ('Something wrong with RETR')
       credit -= major
