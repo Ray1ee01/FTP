@@ -61,7 +61,6 @@ int main(int argc, char **argv) {
             return 0;
         }
     }
-
     listen_fd = ListenBind(port); // listen parameter?
     // printf("%d\n",listen_fd);
     // init all clients
@@ -93,7 +92,7 @@ int main(int argc, char **argv) {
         result = select(FD_SETSIZE,&t_read,&t_write,(fd_set*) 0,NULL);
         if (result<1)
         {
-            printf("Error Select");
+            printf("Error Select\n");
             return 0;
         }
         // 建立连接
@@ -102,7 +101,7 @@ int main(int argc, char **argv) {
             conn_fd=AcceptConnection(listen_fd);
             if (conn_fd==-1)
             {
-                printf("Error accept");
+                printf("Error accept\n");
             }
             else
             {
@@ -124,6 +123,7 @@ int main(int argc, char **argv) {
                     }
                 }
             }
+            if(result==1)continue;
         }
         for(int i=0;i<MAX_CLIENTS;i++)
         {
@@ -133,7 +133,7 @@ int main(int argc, char **argv) {
             }
             if (FD_ISSET(client_entities[i].conn_fd,&t_read))
             {
-                // printf("get avail client %d\n",i);
+                printf("get avail client %d\n",i);
                 memset(sentence,0,sizeof sentence);
                 get_msg(client_entities[i].conn_fd,sentence,255);
                 if(strlen(sentence)<=0)

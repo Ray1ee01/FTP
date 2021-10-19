@@ -59,8 +59,8 @@ int post_data(int fd, char *msg, int max_len)
 // http://www.tcpipguide.com/free/t_FTPRepliesReplyCodeFormatandImportantReplyCodes-4.htm
 void post_msg(int fd,int code, char *pattern)
 {
-    char msg[128];
-    char typical[64];
+    char msg[256];
+    char typical[128];
     switch(code)
     {
     case 125:
@@ -85,7 +85,7 @@ void post_msg(int fd,int code, char *pattern)
         strcpy(typical,"Servive ready for new user");
         break;
     case 221:
-        strcpy(typical,"Service closing control connection");
+        strcpy(typical,"You have transferred 2312 files.\r\n221-You have transferred 12321 bytes.\r\n221-goodbye!");
         break;
     case 225:
         strcpy(typical,"Data connection open; no transfer in progress");
@@ -150,7 +150,14 @@ void post_msg(int fd,int code, char *pattern)
     }
     else
     {
-        sprintf(msg,"%d %s\r\n",code,typical);
+        if(code==221)
+        {
+            sprintf(msg,"%d-%s\r\n",code,typical);
+        }
+        else
+        {
+            sprintf(msg,"%d %s\r\n",code,typical);
+        }
     }
     send(fd,msg,strlen(msg),0);// why send duplicate last msg?
     printf("Send msg %s\n",msg);

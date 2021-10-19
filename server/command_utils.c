@@ -301,17 +301,24 @@ void CmdTYPE(const char *params,Client* client)
 }
 void CmdQUIT(const char *params,Client* client)
 {
+    printf("%d\n",client->conn_fd);
     if (params!=NULL)
     {
         post_msg(client->conn_fd,504,NULL);
     }
     else
     {
-        post_msg(client->conn_fd,221);
-        FD_CLR(client->conn_fd,&read_set);
-        FD_CLR(client->tran_fd,&read_set);
-        FD_CLR(client->conn_fd,&write_set);
-        FD_CLR(client->tran_fd,&write_set);
+        post_msg(client->conn_fd,221,NULL);
+        if(client->conn_fd!=-1)
+        {
+            FD_CLR(client->conn_fd,&read_set);
+            FD_CLR(client->conn_fd,&write_set);
+        }
+        if(client->tran_fd!=-1)
+        {
+            FD_CLR(client->tran_fd,&read_set);
+            FD_CLR(client->tran_fd,&write_set);
+        }
         Init_Client(client);
     }
     return;
