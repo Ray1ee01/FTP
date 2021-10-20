@@ -11,6 +11,7 @@ void Init_Client(Client* client)
     client->state=NOT_SET;
     memset(client->filepath,0,sizeof(client->curdir));
     memset(client->curdir,0,sizeof(client->curdir));
+    strcpy(client->curdir,root);
     memset(client->rnfile,0,sizeof(client->curdir));
     client->offset=0;
     client->list=NOT_LIST;

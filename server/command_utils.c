@@ -210,35 +210,39 @@ void CmdPASV(const char *params,Client* client)
             if (CheckAvailPort(port)==0)break;
         }
         int h1,h2,h3,h4,p1,p2;
-        sscanf(server_ip,"%d.%d.%d.%d" ,&h1,&h2,&h3,&h4);
+        // for client test
+        h1=49;
+        h2=232;
+        h3=106;
+        h4=46;
+        //sscanf(server_ip,"%d.%d.%d.%d" ,&h1,&h2,&h3,&h4);
         p1 = port / (1<<8);
         p2 = port % (1<<8);
         char msg[128];
         sprintf(msg,"(%d,%d,%d,%d,%d,%d)",h1,h2,h3,h4,p1,p2);
         
-        printf("to listen tran port\n");
+        // printf("to listen tran port\n");
         client->tran_fd = ListenBind(port);
         // FD_SET(client->tran_fd,&read_set);
         // FD_SET(client->tran_fd,&write_set);
         post_msg(client->conn_fd,227,msg);
+
     }
     return;
 }
 
 void CmdRETR(const char *params,Client* client)
 {   
-    // todo if server is transfering another file to the client?
-    // FILE *file;
     if (params==NULL)
     {
         post_msg(client->conn_fd,504,NULL);
     }
     else
     {
+        if(BuildDTP(client)==-1)return;
+        printf("BUILD success\n");
         FILE *file;
-        // printf("%s\n",params);
-        sprintf(client->filepath,"%s/%s",root,params);
-        // printf("%s\n",client->filepath);
+        sprintf(client->filepath,"%s/%s",client->curdir,params);
         if((file=fopen(client->filepath,"rb+"))==NULL)
         {
             post_msg(client->conn_fd,550,NULL);
@@ -246,28 +250,25 @@ void CmdRETR(const char *params,Client* client)
         else
         {
             fclose(file);
-            client->state=ABOUT_TO_TRANSFER;
-            //printf("retr true\n");
-            //printf("%d\n",client->state);
-            FD_SET(client->tran_fd,&write_set);
+            pthread_t thread_id;
+            pthread_create(&thread_id,NULL,send_file,(void*)client);
+            pthread_detach(thread_id);
         }
     }
+    return;
 }
 
 void CmdSTOR(const char *params,Client* client)
 {   
-    // todo if server is transfering another file to the client?
-    // FILE *file;
     if (params==NULL)
     {
         post_msg(client->conn_fd,504,NULL);
     }
     else
     {
+        if(BuildDTP(client)==-1)return;
         FILE *file;
-        // printf("%s\n",params);
-        sprintf(client->filepath,"%s/%s",root,params);
-        // printf("%s\n",client->filepath);
+        sprintf(client->filepath,"%s/%s",client->curdir,params);
         if((file=fopen(client->filepath,"ab+"))==NULL)
         {
             post_msg(client->conn_fd,550,NULL);
@@ -275,9 +276,9 @@ void CmdSTOR(const char *params,Client* client)
         else
         {
             fclose(file);
-            printf("file open success\n");
-            client->state=ABOUT_TO_TRANSFER;
-            FD_SET(client->tran_fd,&read_set);
+            pthread_t thread_id;
+            pthread_create(&thread_id,NULL,recv_file,(void*)client);
+            pthread_detach(thread_id);
         }
     }
     return;
@@ -333,31 +334,17 @@ void CmdQUIT(const char *params,Client* client)
 void CmdLIST(const char *params,Client* client)
 {
     // char path[256];
-    if(params==NULL)
+    if (params!=NULL)
     {
-        if(strlen(client->curdir)==0)
-        {
-            sprintf(client->filepath,"%s",root);
-        }
-        else
-        {
-            sprintf(client->filepath,"%s",client->curdir);
-        }
+        sprintf(client->filepath,"%s/%s",client->curdir,params);
     }
     else
     {
-        if(strlen(client->curdir)==0)
-        {
-            sprintf(client->filepath,"%s/%s",root,params);
-        }
-        else
-        {
-            sprintf(client->filepath,"%s/%s",client->curdir,params);
-        }
+        strcpy(client->filepath,client->curdir);
     }
-    client->list=LIST;
-    client->state=ABOUT_TO_TRANSFER;
-    FD_SET(client->tran_fd,&write_set);
+    pthread_t thread_id;
+    pthread_create(&thread_id,NULL,send_list,(void*)client);
+    pthread_detach(thread_id);
     return;
 }
 
@@ -413,7 +400,7 @@ void CmdPWD(const char *params,Client* client)
     }
     else
     {
-        printf("handle PWD\n");
+        printf("handle PWD %s\n",client->curdir);
         post_msg(client->conn_fd,257,client->curdir);
     }
 }
@@ -513,3 +500,29 @@ void CmdRNTO(const char *params,Client* client)
     }
 }
 
+int BuildDTP(Client* client)
+{
+    printf("BUILD DTP\n");
+    if(client->tran_mode==PORT)
+    {
+        post_msg(client->conn_fd,150,NULL);
+        if(connect(client->tran_fd, (struct sockaddr *)&client->addr, sizeof(client->addr))==-1)
+        {
+            close(client->tran_fd);
+            post_msg(client->conn_fd,425,NULL);
+            return -1;
+        }
+    }
+    else if(client->tran_mode==PASV)
+    {
+        post_msg(client->conn_fd,150,NULL);
+        int tran_fd=AcceptConnection(client->tran_fd);
+        if (tran_fd==-1)
+        {
+            post_msg(client->conn_fd,425,NULL);
+            return -1;       
+        }
+        client->tran_fd=tran_fd;
+    }
+    return 0;
+}

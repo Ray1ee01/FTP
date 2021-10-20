@@ -3,6 +3,8 @@
 #ifndef COMMAND_UTILS
 #define COMMAND_UTILS
 
+#include <pthread.h>
+
 #include "global.h"
 
 typedef struct
@@ -48,6 +50,7 @@ void CmdRNFR(const char *params,Client *client);
 
 void CmdRNTO(const char *params,Client *client);
 
+int BuildDTP(Client* client);
 
 
 
