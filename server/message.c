@@ -235,21 +235,28 @@ void* recv_file(void *args)
 //https://blog.csdn.net/clarkness/article/details/88721769
 void* send_list(void* args)
 {
+    printf("send_list\n");
     Client* client=(Client*)args;
     FILE *file=NULL;
-    char buf[BUFFER_SIZE];
-    char cmd[256];
+    char cmd[256]="ls -l ";
     sprintf(cmd,"ls -l %s",client->curdir);
+    printf("cmd %s",cmd);
+    char buf[BUFFER_SIZE];
+    bzero(buf,BUFFER_SIZE);
     file = popen(cmd,"r");
-    int len;
-    while((len=fread(buf,sizeof(char),BUFFER_SIZE,file))>0) // 括号！
+    if(file!=NULL)
     {
-        if(post_data(client->tran_fd,buf,len)==-1) // to do reliable send
+        int len=0;
+        while((len=fread(buf,sizeof(char),BUFFER_SIZE,file))>0) // 括号！
         {
-            post_msg(client->conn_fd,426,NULL);
-            break;
+            printf("buf:%s\n",buf);
+            if(post_data(client->tran_fd,buf,len)==-1) // to do reliable send
+            {
+                post_msg(client->conn_fd,426,NULL);
+                break;
+            }
+            bzero(buf,BUFFER_SIZE);
         }
-        bzero(buf,BUFFER_SIZE);
     }
     pclose(file);
     client->tran_mode=NOT_SET;

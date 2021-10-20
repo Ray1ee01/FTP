@@ -209,6 +209,7 @@ void CmdPASV(const char *params,Client* client)
             port = rand() % 45536+20000;
             if (CheckAvailPort(port)==0)break;
         }
+        port=12345; // to test
         int h1,h2,h3,h4,p1,p2;
         // for client test
         h1=49;
@@ -334,6 +335,7 @@ void CmdQUIT(const char *params,Client* client)
 void CmdLIST(const char *params,Client* client)
 {
     // char path[256];
+    if(BuildDTP(client)==-1)return;
     if (params!=NULL)
     {
         sprintf(client->filepath,"%s/%s",client->curdir,params);
@@ -342,6 +344,8 @@ void CmdLIST(const char *params,Client* client)
     {
         strcpy(client->filepath,client->curdir);
     }
+    printf("list, %s\n",client->filepath);
+    // send_list((void*)client);
     pthread_t thread_id;
     pthread_create(&thread_id,NULL,send_list,(void*)client);
     pthread_detach(thread_id);
