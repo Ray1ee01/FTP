@@ -85,7 +85,7 @@ void post_msg(int fd,int code, char *pattern)
         strcpy(typical,"Servive ready for new user");
         break;
     case 221:
-        strcpy(typical,"You have transferred 2312 files.\r\n221-You have transferred 12321 bytes.\r\n221-goodbye!");
+        strcpy(typical,"goodbye!");
         break;
     case 225:
         strcpy(typical,"Data connection open; no transfer in progress");
@@ -152,14 +152,14 @@ void post_msg(int fd,int code, char *pattern)
     {
         if(code==221)
         {
-            sprintf(msg,"%d-%s\r\n",code,typical);
+            sprintf(msg,"%d %s\r\n",code,typical);
         }
         else
         {
             sprintf(msg,"%d %s\r\n",code,typical);
         }
     }
-    send(fd,msg,strlen(msg),0);// why send duplicate last msg?
+    send(fd,msg,strlen(msg),MSG_WAITALL);// why send duplicate last msg?
     printf("Send msg %s\n",msg);
     // printf("Send msg %s\n",pattern);
     return;
@@ -171,7 +171,7 @@ int send_file(Client *client, FILE *file, char *buf)
 {
     int code=226;
     // bzero(buf,BUFFER_SIZE);
-    memset(buf,0,sizeof(buf));
+    memset(buf,0,BUFFER_SIZE);
     int len=0;
     while((len=fread(buf,sizeof(char),BUFFER_SIZE,file))>0) // 括号！
     {
@@ -200,11 +200,11 @@ int send_file(Client *client, FILE *file, char *buf)
             }
             client->offset+=len;
             // bzero(buf,BUFFER_SIZE);
-            memset(buf,0,sizeof(buf));
+            memset(buf,0,BUFFER_SIZE);
 
         }
     }
-    // fclose(file);
+    fclose(file);
     // printf("File transfer end\n");
     // printf("%d\n",len);
     client->state=NOT_SET;
@@ -213,6 +213,8 @@ int send_file(Client *client, FILE *file, char *buf)
     FD_CLR(client->tran_fd,&read_set);
     client->offset=0;
     close(client->tran_fd);
+    client->tran_fd=-1;
+
     post_msg(client->conn_fd,code,NULL);
     return 1; // success
 }
@@ -220,7 +222,7 @@ int send_file(Client *client, FILE *file, char *buf)
 int recv_file(Client *client, FILE *file, char *buf)
 {
     // bzero(buf,BUFFER_SIZE);
-    memset(buf,0,sizeof(buf));
+    memset(buf,0,BUFFER_SIZE);
     int code=226;
     int len=0;
     if(client->state!=TRANSFER)
@@ -241,7 +243,7 @@ int recv_file(Client *client, FILE *file, char *buf)
             fflush(file);
             client->offset+=len;
             // bzero(buf,BUFFER_SIZE);
-            memset(buf,0,sizeof(buf));
+            memset(buf,0,BUFFER_SIZE);
         }
         fclose(file);
         printf("File transfer end\n");
@@ -251,6 +253,7 @@ int recv_file(Client *client, FILE *file, char *buf)
         FD_CLR(client->tran_fd,&read_set);
         client->offset=0;
         close(client->tran_fd);
+        client->tran_fd=-1;
         post_msg(client->conn_fd,code,NULL);
         return 1; // success
     }
@@ -284,7 +287,7 @@ int send_list(Client* client,char* buf)
             }
             client->offset+=len;
             // bzero(buf,BUFFER_SIZE);
-            memset(buf,0,sizeof(buf));
+            memset(buf,0,BUFFER_SIZE);
 
         }
     }
@@ -292,6 +295,7 @@ int send_list(Client* client,char* buf)
     printf("File transfer end\n");
     client->state=NOT_SET;
     FD_CLR(client->tran_fd,&write_set);
+    client->tran_fd=-1;
     client->offset=0;
     return 1; // success
 }

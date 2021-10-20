@@ -48,7 +48,7 @@
 #define LIST 0
 
 // constant for FTP system
-#define MAX_CLIENTS 64
+#define MAX_CLIENTS 10
 
 
 #define BUFFER_SIZE 100

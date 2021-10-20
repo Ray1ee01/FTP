@@ -9,3 +9,4 @@ int post_data(int fd, char *msg, int max_len);
 
 int send_file(Client *client, FILE *file, char* buf);
 int recv_file(Client *client, FILE *file, char* buf);
+int send_list(Client *client,char* buf);

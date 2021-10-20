@@ -1,6 +1,7 @@
 #include "command_utils.h"
 #include "socket_utils.h"
 #include "client_utils.h"
+#include "message.h"
 #include "global.h"
 
 
@@ -90,6 +91,7 @@ void HandleCommand(const char* cmd,const char* params,Client* client)
             }
             else
             {
+                printf("state transfer!\n");
                 // 如果正在处理指令，该怎么办？
                 break;
             }
@@ -301,7 +303,7 @@ void CmdTYPE(const char *params,Client* client)
 }
 void CmdQUIT(const char *params,Client* client)
 {
-    printf("%d\n",client->conn_fd);
+    printf("conn:%d tran:%d\n",client->conn_fd,client->tran_fd);
     if (params!=NULL)
     {
         post_msg(client->conn_fd,504,NULL);
@@ -309,18 +311,23 @@ void CmdQUIT(const char *params,Client* client)
     else
     {
         post_msg(client->conn_fd,221,NULL);
-        if(client->conn_fd!=-1)
-        {
-            FD_CLR(client->conn_fd,&read_set);
-            FD_CLR(client->conn_fd,&write_set);
-        }
         if(client->tran_fd!=-1)
         {
             FD_CLR(client->tran_fd,&read_set);
             FD_CLR(client->tran_fd,&write_set);
+            close(client->tran_fd);
+
+        }
+        if(client->conn_fd!=-1)
+        {
+            FD_CLR(client->conn_fd,&read_set);
+            FD_CLR(client->conn_fd,&write_set);
+            close(client->conn_fd);
         }
         Init_Client(client);
+        printf("quit success\n");
     }
+    printf("FDSETSIZE:%d\n",FD_SETSIZE);
     return;
 }
 void CmdLIST(const char *params,Client* client)

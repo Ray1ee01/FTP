@@ -15,6 +15,7 @@
 #include "client_utils.h"
 
 
+
 int main(int argc, char **argv) {
     int listen_fd, conn_fd;		//监听socket和连接socket不一样，后者用于数据传输
     // struct sockaddr_in addr;
@@ -106,6 +107,7 @@ int main(int argc, char **argv) {
             else
             {
                 // printf("Conn_fd build\n");
+                // printf("conn_fd: %d\n",conn_fd);
                 for(int i=0;i<MAX_CLIENTS;i++)
                 {
                     if(client_entities[i].conn_fd==-1)
@@ -115,6 +117,10 @@ int main(int argc, char **argv) {
                         FD_SET(client_entities[i].conn_fd,&read_set);
                         post_msg(client_entities[i].conn_fd,220,NULL);
                         break;
+                    }
+                    else
+                    {
+                        printf("%d\n",client_entities[i].conn_fd);
                     }
                     if(i==MAX_CLIENTS-1)
                     {
@@ -133,7 +139,7 @@ int main(int argc, char **argv) {
             }
             if (FD_ISSET(client_entities[i].conn_fd,&t_read))
             {
-                printf("get avail client %d\n",i);
+                // printf("get avail client %d\n",i);
                 memset(sentence,0,sizeof sentence);
                 get_msg(client_entities[i].conn_fd,sentence,255);
                 if(strlen(sentence)<=0)
@@ -181,15 +187,15 @@ int main(int argc, char **argv) {
             {
                 if(client_entities[i].tran_mode== PASV)
                 {
-                    printf("%d\n",client_entities[i].state);
+                    // printf("%d\n",client_entities[i].state);
                     if (client_entities[i].state==ABOUT_TO_TRANSFER)
                     {
                         post_msg(client_entities[i].conn_fd,150,NULL);
                         int tran_fd=AcceptConnection(client_entities[i].tran_fd);
-                        printf("accept success\n");
+                        // printf("accept success\n");
                         if (tran_fd==-1)
                         {
-                            printf("tran_fd error\n");
+                            // printf("tran_fd error\n");
                             post_msg(client_entities[i].conn_fd,425,NULL);
                             continue;
                         }
@@ -199,7 +205,7 @@ int main(int argc, char **argv) {
                     }
                     else if(client_entities[i].state==TRANSFER)
                     {
-                        printf("start transfer\n");
+                        // printf("start transfer\n");
                         FILE* file=fopen(client_entities[i].filepath,"ab+");
                         fseek(file,client_entities[i].offset,SEEK_SET);
                         recv_file(&client_entities[i],file,buf);
@@ -220,7 +226,7 @@ int main(int argc, char **argv) {
                             post_msg(client_entities[i].conn_fd,150,NULL);
                             client_entities[i].state=TRANSFER;
                             FILE* file=fopen(client_entities[i].filepath,"ab+");
-                            fseek(file,client_entities[i].offset,SEEK_SET);
+                            // fseek(file,client_entities[i].offset,SEEK_SET);
                             recv_file(&client_entities[i],file,buf);
                         }
                     }
@@ -228,7 +234,7 @@ int main(int argc, char **argv) {
                     {
                         // printf("PORT RECV\n");
                         FILE* file=fopen(client_entities[i].filepath,"ab+");
-                        fseek(file,client_entities[i].offset,SEEK_SET);
+                        // fseek(file,client_entities[i].offset,SEEK_SET);
                         recv_file(&client_entities[i],file,buf);
                     }
                 }
@@ -255,22 +261,23 @@ int main(int argc, char **argv) {
                         }
                         FD_SET(tran_fd,&read_set);
                         client_entities[i].tran_fd=tran_fd;
-                        client_entities[i].state=TRANSFER;                    }
+                        client_entities[i].state=TRANSFER;                    
+                    }
                     else if(client_entities[i].state==TRANSFER)
                     {
                         if(client_entities[i].list==NOT_LIST)
                         {
                             FILE* file=fopen(client_entities[i].filepath,"rb+");
-                            printf("%s\n",client_entities[i].filepath);
+                            // printf("%s\n",client_entities[i].filepath);
                             if(file==NULL)
                             {
                                 post_msg(client_entities[i].conn_fd,451,NULL);
                             }
                             else
                             {
-                                printf("send_file\n");
+                                // printf("send_file\n");
                                 send_file(&client_entities[i],file,buf);
-                                fclose(file);
+                                // fclose(file);
                             }
                         }
                         else
@@ -304,17 +311,17 @@ int main(int argc, char **argv) {
                             //printf("PORT send\n");
                             post_msg(client_entities[i].conn_fd,150,NULL);
                             FILE* file=fopen(client_entities[i].filepath,"rb+");
-                            printf("%s\n",client_entities[i].filepath);
+                            // printf("%s\n",client_entities[i].filepath);
                             if(file==NULL)
                             {
                                 post_msg(client_entities[i].conn_fd,451,NULL);
                             }
                             else
                             {
-                                printf("send_file\n");
+                                // printf("send_file\n");
                                 // fseek(file,client_entities[i].offset,SEEK_SET);
                                 send_file(&client_entities[i],file,buf);
-                                fclose(file);
+                                // fclose(file);
                             }
                         }
                         else

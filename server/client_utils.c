@@ -9,8 +9,11 @@ void Init_Client(Client* client)
     client->login=NOT_LOGIN;
     client->tran_mode=NOT_SET;
     client->state=NOT_SET;
-    client->list=-1;
+    memset(client->filepath,0,sizeof(client->curdir));
     memset(client->curdir,0,sizeof(client->curdir));
+    memset(client->rnfile,0,sizeof(client->curdir));
+    client->offset=0;
+    client->list=NOT_LIST;
     // how to set socket addr?
     return;
 }
