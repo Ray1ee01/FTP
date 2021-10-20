@@ -262,7 +262,7 @@ int main(int argc, char **argv) {
                         FD_SET(tran_fd,&read_set);
                         client_entities[i].tran_fd=tran_fd;
                         client_entities[i].state=TRANSFER;                    
-                    }
+                      }
                     else if(client_entities[i].state==TRANSFER)
                     {
                         if(client_entities[i].list==NOT_LIST)
