@@ -150,9 +150,9 @@ void post_msg(int fd,int code, char *pattern)
     }
     else
     {
-        if(code==221)
+        if(strlen(typical)==0)
         {
-            sprintf(msg,"%d %s\r\n",code,typical);
+            sprintf(msg,"%d %s\r\n",code,pattern);
         }
         else
         {
@@ -191,6 +191,12 @@ void* send_file(void *args)
             bzero(buf,BUFFER_SIZE);
         }
         fclose(file);
+        if(client->tran_mode==PASV)
+        {
+            printf("PASV mode\n");
+            close(client->listen_fd);
+            client->listen_fd=-1;
+        }
         client->tran_mode=NOT_SET;
         close(client->tran_fd);
         client->tran_fd=-1;
@@ -224,6 +230,11 @@ void* recv_file(void *args)
         }
         fflush(file);
         fclose(file);
+        if(client->tran_mode==PASV)
+        {
+            close(client->listen_fd);
+            client->listen_fd=-1;
+        }
         client->tran_mode=NOT_SET;
         close(client->tran_fd);
         client->tran_fd=-1;
@@ -249,7 +260,7 @@ void* send_list(void* args)
         int len=0;
         while((len=fread(buf,sizeof(char),BUFFER_SIZE,file))>0) // 括号！
         {
-            printf("buf:%s\n",buf);
+            // printf("buf:%s\n",buf);
             if(post_data(client->tran_fd,buf,len)==-1) // to do reliable send
             {
                 post_msg(client->conn_fd,426,NULL);
@@ -259,9 +270,12 @@ void* send_list(void* args)
         }
     }
     pclose(file);
+
     client->tran_mode=NOT_SET;
     close(client->tran_fd);
+    close(client->listen_fd);
     client->tran_fd=-1;
+    client->listen_fd=-1;
     post_msg(client->conn_fd,226,NULL);
     return 0;
 }

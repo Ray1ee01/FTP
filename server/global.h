@@ -58,6 +58,7 @@ typedef struct
     struct sockaddr_in addr; // 只在port中使用
     int conn_fd;             // 传递command用fd
     int tran_fd;             // 文件transfer用fd
+    int listen_fd;           // PASV only
     int login;               // 登录状态 
     int tran_mode;           // 建立transfer连接的模式 PASV or POST 
     int state;               // 是否在处理命令

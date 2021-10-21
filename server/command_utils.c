@@ -195,7 +195,7 @@ void CmdPASV(const char *params,Client* client)
     {
         post_msg(client->conn_fd,504,NULL);
     }
-    else
+    else if(client->tran_mode!=PASV)
     {
         client->tran_mode=PASV;
         if (client->state==TRANSFER)
@@ -223,7 +223,7 @@ void CmdPASV(const char *params,Client* client)
         sprintf(msg,"(%d,%d,%d,%d,%d,%d)",h1,h2,h3,h4,p1,p2);
         
         // printf("to listen tran port\n");
-        client->tran_fd = ListenBind(port);
+        client->listen_fd = ListenBind(port);
         // FD_SET(client->tran_fd,&read_set);
         // FD_SET(client->tran_fd,&write_set);
         post_msg(client->conn_fd,227,msg);
@@ -241,9 +241,9 @@ void CmdRETR(const char *params,Client* client)
     else
     {
         if(BuildDTP(client)==-1)return;
-        printf("BUILD success\n");
         FILE *file;
         sprintf(client->filepath,"%s/%s",client->curdir,params);
+        printf("%s\n",client->filepath);
         if((file=fopen(client->filepath,"rb+"))==NULL)
         {
             post_msg(client->conn_fd,550,NULL);
@@ -359,7 +359,8 @@ void CmdMKD(const char *params,Client* client)
     {
         post_msg(client->conn_fd,504,NULL);
     }
-    sprintf(path,"%s/%s",root,params);
+    sprintf(path,"%s/%s",client->curdir,params);
+    printf("mkd %s\n",path);
     if (mkdir(path, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH) == 0) 
     {
         post_msg(client->conn_fd, 250, path);
@@ -380,9 +381,11 @@ void CmdCWD(const char *params,Client* client)
     }
     else
     {
-        sprintf(path,"%s/%s",root,params);
-        printf("%s",client->curdir);
-        if(access(path,0)!=0)
+        sprintf(path,"%s/%s",client->curdir,params);
+        printf("%s,%s\n",client->curdir,params);
+        struct stat s;
+        stat(path, &s);
+        if(!(s.st_mode & S_IFDIR))
         {
             post_msg(client->conn_fd,550,NULL);
         }
@@ -394,7 +397,6 @@ void CmdCWD(const char *params,Client* client)
     }
     return;
 }
-
 void CmdPWD(const char *params,Client* client)
 {
     if (params!=NULL)
@@ -490,8 +492,10 @@ void CmdRNTO(const char *params,Client* client)
     }
     else
     {
-        char cmd[256];
-        sprintf(cmd,"mv %s %s",client->rnfile,params);
+        char cmd[384];
+        char dest[160];
+        sprintf(dest,"%s/%s",client->curdir,params);
+        sprintf(cmd,"mv %s %s",client->rnfile,dest);
         printf("%s\n",cmd);
         if (system(cmd)==-1)
         {
@@ -501,6 +505,7 @@ void CmdRNTO(const char *params,Client* client)
         {
             post_msg(client->conn_fd,250,NULL);
         }
+        client->state=NOT_SET;
     }
 }
 
@@ -520,7 +525,8 @@ int BuildDTP(Client* client)
     else if(client->tran_mode==PASV)
     {
         post_msg(client->conn_fd,150,NULL);
-        int tran_fd=AcceptConnection(client->tran_fd);
+        printf("%d\n",client->listen_fd);
+        int tran_fd=AcceptConnection(client->listen_fd);
         if (tran_fd==-1)
         {
             post_msg(client->conn_fd,425,NULL);

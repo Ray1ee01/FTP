@@ -6,6 +6,7 @@ void Init_Client(Client* client)
 {
     client->conn_fd=-1;
     client->tran_fd=-1;
+    client->listen_fd=-1;
     client->login=NOT_LOGIN;
     client->tran_mode=NOT_SET;
     client->state=NOT_SET;
