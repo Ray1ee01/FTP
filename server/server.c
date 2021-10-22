@@ -24,7 +24,8 @@ int main(int argc, char **argv) {
     int port =6789;
     char sentence[256];
     // char buf[BUFFER_SIZE];
-    strcpy(root,"/tmp");
+    // strcpy(root,"/tmp");
+    strcpy(root,"/home/ubuntu/test");
     GetLocalIP(server_ip);
     // printf("%s",server_ip);
     // printf("Start receive argu\n");    

@@ -100,14 +100,13 @@ void HandleCommand(const char* cmd,const char* params,Client* client)
 }
 void CmdABOR(const char* params,Client *client)
 {
-    if (client->state!=-1)
+    if (client->tran_fd!=-1)
     {
-        post_msg(client->conn_fd,426,NULL);
+        close(client->tran_fd);
+        client->tran_fd=-1;
+        // post_msg(client->conn_fd,426,NULL);
     }
-    else
-    {
-        post_msg(client->conn_fd,226,NULL);
-    }
+    // post_msg(client->tran_fd,226,NULL);
     return;
 }
 
@@ -241,6 +240,7 @@ void CmdRETR(const char *params,Client* client)
     else
     {
         if(BuildDTP(client)==-1)return;
+        client->state=DOWNLOAD;
         FILE *file;
         sprintf(client->filepath,"%s/%s",client->curdir,params);
         printf("%s\n",client->filepath);
@@ -268,8 +268,10 @@ void CmdSTOR(const char *params,Client* client)
     else
     {
         if(BuildDTP(client)==-1)return;
+        client->state=UPLOAD;
         FILE *file;
         sprintf(client->filepath,"%s/%s",client->curdir,params);
+        printf("%s\n",client->filepath);
         if((file=fopen(client->filepath,"ab+"))==NULL)
         {
             post_msg(client->conn_fd,550,NULL);
@@ -283,6 +285,29 @@ void CmdSTOR(const char *params,Client* client)
         }
     }
     return;
+}
+void CmdREST(const char *params,Client* client)
+{
+    if(params==NULL)
+    {
+        post_msg(client->conn_fd,504,NULL);
+    }
+    else
+    {
+        client->offset=atoi(params);
+        if(client->state==UPLOAD)
+        {
+            pthread_t thread_id;
+            pthread_create(&thread_id,NULL,recv_file,(void*)client);
+            pthread_detach(thread_id);
+        }
+        else if(client->state==DOWNLOAD)
+        {
+            pthread_t thread_id;
+            pthread_create(&thread_id,NULL,send_file,(void*)client);
+            pthread_detach(thread_id);
+        }
+    }
 }
 void CmdSYST(const char *params,Client* client)
 {
@@ -429,9 +454,13 @@ void CmdRMD(const char *params,Client* client)
             sprintf(path,"%s/%s",client->curdir,params);
         }
         printf("%s\n",path);
-        if(access(path,0)==-1)
+        // if(access(path,0)==-1)
+        // {
+        //     post_msg(client->conn_fd,550,NULL);
+        // }
+        if(0)
         {
-            post_msg(client->conn_fd,550,NULL);
+
         }
         else
         {

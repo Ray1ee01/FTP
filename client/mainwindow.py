@@ -9,9 +9,13 @@
 
 
 from PyQt5 import QtCore, QtGui, QtWidgets
+from PyQt5.QtWidgets import QApplication, QMainWindow, QTreeWidget, QTreeWidgetItem, QMessageBox, QTextBrowser, QFileDialog
 from PyQt5.QtWidgets import QMainWindow
-
-
+import socket
+import re
+import os
+import time
+from thread import *
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         MainWindow.setObjectName("MainWindow")
@@ -58,20 +62,20 @@ class Ui_MainWindow(object):
         self.connectButton.setObjectName("connectButton")
         self.horizontalLayout.addWidget(self.connectButton)
         self.cmdBrowser = QtWidgets.QTextBrowser(self.centralwidget)
-        self.cmdBrowser.setGeometry(QtCore.QRect(10, 80, 541, 501))
+        self.cmdBrowser.setGeometry(QtCore.QRect(10, 80, 541, 541))
         self.cmdBrowser.setObjectName("cmdBrowser")
         self.localWidget = QtWidgets.QTreeWidget(self.centralwidget)
         self.localWidget.setGeometry(QtCore.QRect(570, 80, 621, 211))
         self.localWidget.setObjectName("localWidget")
         self.localWidget.headerItem().setText(0, "1")
-        self.localWidget.setHeaderLabels(['Name', 'Size', 'Mode', 'Last Time'])
-        
+        self.localWidget.setHeaderLabels(['TYPE','Name', 'Size', 'Last Time'])
+
         self.remoteWidget = QtWidgets.QTreeWidget(self.centralwidget)
         self.remoteWidget.setGeometry(QtCore.QRect(570, 300, 621, 231))
         self.remoteWidget.setObjectName("remoteWidget")
         self.remoteWidget.headerItem().setText(0, "1")
-        self.remoteWidget.setHeaderLabels(['Name', 'Size', 'Mode', 'Last Time'])
-        
+        self.remoteWidget.setHeaderLabels(['TYPE','Name', 'Size', 'Last Time'])
+
         self.label_5 = QtWidgets.QLabel(self.centralwidget)
         self.label_5.setGeometry(QtCore.QRect(10, 60, 72, 15))
         self.label_5.setObjectName("label_5")
@@ -81,9 +85,9 @@ class Ui_MainWindow(object):
         self.horizontalLayout_2 = QtWidgets.QHBoxLayout(self.horizontalLayoutWidget_2)
         self.horizontalLayout_2.setContentsMargins(0, 0, 0, 0)
         self.horizontalLayout_2.setObjectName("horizontalLayout_2")
-        self.cmdButton = QtWidgets.QPushButton(self.horizontalLayoutWidget_2)
-        self.cmdButton.setObjectName("cmdButton")
-        self.horizontalLayout_2.addWidget(self.cmdButton)
+        self.mkdButton = QtWidgets.QPushButton(self.horizontalLayoutWidget_2)
+        self.mkdButton.setObjectName("mkdButton")
+        self.horizontalLayout_2.addWidget(self.mkdButton)
         self.rnButton = QtWidgets.QPushButton(self.horizontalLayoutWidget_2)
         self.rnButton.setObjectName("rnButton")
         self.horizontalLayout_2.addWidget(self.rnButton)
@@ -97,13 +101,25 @@ class Ui_MainWindow(object):
         self.storButton.setObjectName("storButton")
         self.horizontalLayout_2.addWidget(self.storButton)
         self.transWidget = QtWidgets.QTreeWidget(self.centralwidget)
-        self.transWidget.setGeometry(QtCore.QRect(10, 590, 1181, 301))
+        self.transWidget.setGeometry(QtCore.QRect(10, 640, 1181, 251))
         self.transWidget.setObjectName("transWidget")
         self.transWidget.headerItem().setText(0, "1")
         self.transWidget.header().setSortIndicatorShown(False)
         self.transWidget.setHeaderLabels(
             ['Down/Up','Local','Remote','Size','Status']
         )
+        self.mkdEdit = QtWidgets.QLineEdit(self.centralwidget)
+        self.mkdEdit.setGeometry(QtCore.QRect(570, 590, 113, 23))
+        self.mkdEdit.setObjectName("mkdEdit")
+        self.renameEdit = QtWidgets.QLineEdit(self.centralwidget)
+        self.renameEdit.setGeometry(QtCore.QRect(700, 590, 113, 23))
+        self.renameEdit.setObjectName("renameEdit")
+        self.aborButton = QtWidgets.QPushButton(self.centralwidget)
+        self.aborButton.setGeometry(QtCore.QRect(820, 590, 121, 24))
+        self.aborButton.setObjectName("aborButton")
+        self.restButton = QtWidgets.QPushButton(self.centralwidget)
+        self.restButton.setGeometry(QtCore.QRect(950, 590, 111, 24))
+        self.restButton.setObjectName("restButton")
         MainWindow.setCentralWidget(self.centralwidget)
         self.statusbar = QtWidgets.QStatusBar(MainWindow)
         self.statusbar.setObjectName("statusbar")
@@ -123,11 +139,14 @@ class Ui_MainWindow(object):
         self.portButton.setText(_translate("MainWindow", "PORT"))
         self.connectButton.setText(_translate("MainWindow", "connect"))
         self.label_5.setText(_translate("MainWindow", "Command"))
-        self.cmdButton.setText(_translate("MainWindow", "Create"))
+        self.mkdButton.setText(_translate("MainWindow", "Create"))
         self.rnButton.setText(_translate("MainWindow", "Rename"))
         self.rmdButton.setText(_translate("MainWindow", "Remove"))
         self.retrButton.setText(_translate("MainWindow", "Download"))
         self.storButton.setText(_translate("MainWindow", "Upload"))
+        self.aborButton.setText(_translate("MainWindow", "Pause"))
+        self.restButton.setText(_translate("MainWindow", "Continue"))
+
 
 class FTPClient(QMainWindow,Ui_MainWindow):
     def __init__(self,parent=None):
@@ -139,28 +158,51 @@ class FTPClient(QMainWindow,Ui_MainWindow):
         self.tran_mode = 'PASV'
         self.local_ip = ''
         self.last_resp = ''
-        self.cmdBrowser = None
         self.port = 21
-
+        self.remotedir='/home/ubuntu/test'
+        self.localdir='E:/ftp'
+        self.offset=0
+        self.thread=None
         self.pasvButton.clicked.connect(self.set_PASV)
         self.portButton.clicked.connect(self.set_PORT)
+        self.connectButton.clicked.connect(self.login)
+        self.mkdButton.clicked.connect(self.MKD)
+        self.rnButton.clicked.connect(self.rename)
+        self.remoteWidget.doubleClicked.connect(self.CWD)
+        self.rmdButton.clicked.connect(self.RMD)
+        self.retrButton.clicked.connect(self.RETR)
+        self.storButton.clicked.connect(self.STOR)
+        self.aborButton.clicked.connect(self.ABOR)
+        self.restButton.clicked.connect(self.REST)
+
+        self.ipEdit.setText('49.232.106.46')
+        self.portEdit.setText('6789')
+        self.userEdit.setText('anonymous')
+        self.passEdit.setText('123')
+
+        # self.LIST()
+
         # TODO connect signal and slot
     def get_msg(self):
-        self.last_resp=self.conn_fd.recv(256).decode().replace('\r\n','')
-        self.cmdBrowser.setText('server: '+self.last_resp)
+        self.last_resp=self.conn_fd.recv(8192).decode().replace('\r\n','')
+        print(self.last_resp)
+        self.cmdBrowser.append('server: '+self.last_resp)
+        # self.cmdBrowser.moveCursor(self.cmdBrowser.textCursor().End) 
     def post_msg(self,msg):
         msg+='\r\n'
         self.conn_fd.send(msg.encode('utf-8'))
-        self.cmdBrowser.setText('client: '+msg)
+        self.cmdBrowser.append('client: '+msg)
 
         
     # combine connect, USER and PASS
-    def login(self,user,pswd):        
+    def login(self):        
         # get local ip
         try:
             s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             s.connect(('8.8.8.8', 80))
             self.local_ip = s.getsockname()[0]
+        except Exception as e:
+            print(str(e))
         finally:
             s.close()
         # get available port
@@ -173,21 +215,48 @@ class FTPClient(QMainWindow,Ui_MainWindow):
         # connect
         try:
             self.conn_fd = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            self.conn_fd.connect((self.ip,self.host))
+            self.conn_fd.connect((self.ipEdit.text(),int(self.portEdit.text())))
             self.get_msg()
-            self.post_msg('USER '+user)
+            self.post_msg('USER '+self.userEdit.text())
             self.get_msg()
-            self.post_msg('PASS '+pswd)
+            self.post_msg('PASS '+self.passEdit.text())
+            self.get_msg()
+            
+            self.LIST()
+            self.LocalLIST()
         except Exception as e:
             print(str(e))
     def set_PASV(self):
         self.tran_mode='PASV'
     def set_PORT(self):      
-        self.tran_mode='PORT'  
-    def PASV(self):
+        self.tran_mode='PORT' 
+    def ABOR(self):
+        self.post_msg('ABOR')
+        self.tran_fd.close()
         self.get_msg()
-        host = re.search(r'(\d*),(\d*),(\d*),(\d*),(\d*),(\d*)',self.last_resp).split(',')
-        ip='.'.join(match[:4])
+        self.get_msg()
+    def REST(self):
+        self.post_msg('REST '+str(self.offset))
+        item=self.QTreeWidgetItem(self.transWidget).currentItem()
+        filepath=item.text(1)
+        def update(offset):
+            item.setText(4,str(offset/int(item.text(2))))  
+        if item.text(0)=='Download':
+            self.thread=DownloadThread(self,filepath)
+            self.thread.update_signal.connect(update)
+            self.thread.complete_signal.connect(self.finish)
+            self.thread.start()
+        elif item.text(1)=='Upload':
+            self.thread=UploadThread(self,filepath)
+            self.thread.update_signal.connect(update)
+            self.thread.complete_signal.connect(self.finish)
+            self.thread.start()
+        
+    def PASV(self):
+        self.post_msg('PASV')
+        self.get_msg()
+        host = re.search(r'(\d*),(\d*),(\d*),(\d*),(\d*),(\d*)',self.last_resp).group().split(',')
+        ip='.'.join(host[:4])
         port = int(host[4])*256+int(host[5])
         self.tran_fd = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.tran_fd.connect((ip, port))
@@ -208,37 +277,106 @@ class FTPClient(QMainWindow,Ui_MainWindow):
     def PWD(self):
         self.post_msg('PWD')
         self.get_msg()
-    def CWD(self,params):
-        self.post_msg('CWD '+params)
+    def CWD(self):
+        item = self.remoteWidget.currentItem()
+        self.remotedir+= ('/'+item.text(1))
+        if item.text(0)=="Folder":
+            self.post_msg('CWD '+item.text(1))
         self.get_msg()
-    def MKD(self,params):
-        self.post_msg('MKD '+params)
+        self.LIST()
+    def MKD(self):
+        self.post_msg('MKD '+self.mkdEdit.text())
         self.get_msg()
-    def RMD(self,params):
-        self.post_msg('RMD '+params)
+        self.LIST()
+
+    def RMD(self):
+        self.post_msg('RMD '+self.remoteWidget.currentItem().text(1))
         self.get_msg()
+    def rename(self):
+        self.RNFR(self.remoteWidget.currentItem().text(1))
+        self.RNTO(self.renameEdit.text())
+        self.LIST()
     def RNFR(self,params):
         self.post_msg('RNFR '+params)
         self.get_msg()
     def RNTO(self,params):
         self.post_msg('RNTO '+params)
         self.get_msg()
-    def LIST(self,params):
+    def LIST(self,params=str('')):
+        self.remoteWidget.clear()
         self.BuildDTP()
-        self.post_msg('LIST '+params)
-        # TODO
+        self.post_msg('LIST')
+        file_list=''
+        while True:
+            data=self.tran_fd.recv(8192).decode()
+            file_list+=data
+            if not data:break
+        file_list=file_list.split('\n')[1:-1] # 最后一行是空行
+        for file in file_list:
+            file = re.sub('\s+', ' ',file)
+            file=file.split(' ')
+            item = QTreeWidgetItem(self.remoteWidget)
+            if file[0][0]=='d':
+                item.setText(0,'Folder')
+            else: item.setText(0,'File')
+            item.setText(1,file[-1])
+            item.setText(2,file[4])
+            item.setText(3,' '.join(file[5:8]))
         self.get_msg()
         self.tran_fd.close()
-    def RETR(self,source_file,dest_file):
-        self.BuildDTP()
-        self.post_msg('RETR '+params)
         self.get_msg()
-        # TODO
-    def STOR(self,source_file,dest_file):
-        self.BuildDTP()
-        self.post_msg('STOR'+params)
+    def LocalLIST(self):
+        self.localWidget.clear()
+        for file in os.listdir(self.localdir):
+            filepath=os.path.join(self.localdir,file)
+            stat = os.stat(filepath)
+            item =QTreeWidgetItem(self.localWidget)
+            if os.path.isdir(filepath):
+                item.setText(0,'Folder')
+            else : item.setText(0,'File')
+            item.setText(1,file)
+            item.setText(2,str(stat.st_size))
+            item.setText(3,time.strftime('%b %d %H:%M', time.gmtime(stat.st_mtime)))
+    def finish(self):
         self.get_msg()
-        # TODO
+        self.LIST()
+        self.LocalLIST()
+    def RETR(self):            
+        self.BuildDTP()
+        item=self.remoteWidget.currentItem()
+        filepath=self.localdir+'/'+item.text(1)
+        self.post_msg('RETR '+item.text(1))
+        self.get_msg()
+        item2=QTreeWidgetItem(self.transWidget)
+        item2.setText(0,'Download')
+        item2.setText(1,filepath)
+        item2.setText(2,self.remotedir+'/'+item.text(1))
+        item2.setText(3,item.text(2))
+        item2.setText(4,str(0))
+        def update(offset):
+            item2.setText(4,str(offset/int(item.text(2))))     
+        self.thread=DownloadThread(self,filepath)
+        self.thread.update_signal.connect(update)
+        self.thread.complete_signal.connect(self.finish)
+        self.thread.start()
+    def STOR(self):
+        self.BuildDTP()
+        item=self.localWidget.currentItem()
+        filepath=self.localdir+'/'+item.text(1)
+        self.post_msg('STOR '+item.text(1))
+        self.get_msg()
+        item2=QTreeWidgetItem(self.transWidget)
+        item2.setText(0,'Upload')
+        item2.setText(1,filepath)
+        item2.setText(2,self.remotedir+'/'+item.text(1))
+        item2.setText(3,item.text(2))
+        item2.setText(4,str(0))
+        def update(offset):
+            item2.setText(4,str(offset/int(item.text(2))))   
+        self.thread=UploadThread(self,filepath)
+        self.thread.update_signal.connect(update)
+        self.thread.complete_signal.connect(self.finish)
+        self.thread.start()
     def BuildDTP(self):
         if self.tran_mode == 'PASV':
             self.PASV()

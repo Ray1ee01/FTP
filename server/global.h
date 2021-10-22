@@ -42,6 +42,8 @@
 #define TRANSFER 1
 #define RNFR 2
 #define RNFO 3
+#define DOWNLOAD 4
+#define UPLOAD 5
 
 // list
 #define NOT_LIST -1

@@ -25,6 +25,7 @@ int get_data(int fd, char *msg, int max_len)
     int p = 0;
     while (1) {
         int n = read(fd, msg + p,max_len - p);
+        // printf("%d\n",n);
         if (n < 0) {
             // printf("Error read(): %s(%d)\n", strerror(errno), errno);
             // close(conn_fd);
@@ -177,6 +178,7 @@ void* send_file(void *args)
     }
     else
     {
+        fseek(file,client->offset,SEEK_SET);
         char buf[BUFFER_SIZE];
         bzero(buf,BUFFER_SIZE);
         int len=0;
@@ -198,7 +200,7 @@ void* send_file(void *args)
             client->listen_fd=-1;
         }
         client->tran_mode=NOT_SET;
-        close(client->tran_fd);
+        if(client->tran_fd!=-1)close(client->tran_fd);
         client->tran_fd=-1;
         post_msg(client->conn_fd,226,NULL);
     }
@@ -215,16 +217,18 @@ void* recv_file(void *args)
     }
     else
     {
+        fseek(file,client->offset,SEEK_SET);
         char buf[BUFFER_SIZE];
         bzero(buf,BUFFER_SIZE);
         int len=0;
         while((len=get_data(client->tran_fd,buf,BUFFER_SIZE))>0)
         {
-            if((len=fwrite(buf,sizeof(char),BUFFER_SIZE,file))<0)
+            if((fwrite(buf,sizeof(char),len,file))<len)
             {
                 post_msg(client->conn_fd,451,NULL);
                 break;
             }
+            // printf("%s\n",buf);
             client->offset+=len;
             bzero(buf,BUFFER_SIZE);
         }
@@ -236,7 +240,7 @@ void* recv_file(void *args)
             client->listen_fd=-1;
         }
         client->tran_mode=NOT_SET;
-        close(client->tran_fd);
+        if(client->tran_fd!=-1)close(client->tran_fd);
         client->tran_fd=-1;
         post_msg(client->conn_fd,226,NULL);
     }

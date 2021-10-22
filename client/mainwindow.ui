@@ -93,7 +93,7 @@
       <x>10</x>
       <y>80</y>
       <width>541</width>
-      <height>501</height>
+      <height>541</height>
      </rect>
     </property>
    </widget>
@@ -191,9 +191,9 @@
     <property name="geometry">
      <rect>
       <x>10</x>
-      <y>590</y>
+      <y>640</y>
       <width>1181</width>
-      <height>301</height>
+      <height>251</height>
      </rect>
     </property>
     <attribute name="headerShowSortIndicator" stdset="0">
@@ -204,6 +204,52 @@
       <string notr="true">1</string>
      </property>
     </column>
+   </widget>
+   <widget class="QLineEdit" name="cwdEdit">
+    <property name="geometry">
+     <rect>
+      <x>570</x>
+      <y>590</y>
+      <width>113</width>
+      <height>23</height>
+     </rect>
+    </property>
+   </widget>
+   <widget class="QLineEdit" name="rmdEdit">
+    <property name="geometry">
+     <rect>
+      <x>700</x>
+      <y>590</y>
+      <width>113</width>
+      <height>23</height>
+     </rect>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="aborButton">
+    <property name="geometry">
+     <rect>
+      <x>820</x>
+      <y>590</y>
+      <width>121</width>
+      <height>24</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Pause</string>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="restButton">
+    <property name="geometry">
+     <rect>
+      <x>950</x>
+      <y>590</y>
+      <width>111</width>
+      <height>24</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Continue</string>
+    </property>
    </widget>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
