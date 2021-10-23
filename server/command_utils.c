@@ -5,7 +5,7 @@
 #include "global.h"
 
 
-CommandFilter Cmd_Filters[17]={
+CommandFilter Cmd_Filters[18]={
     {
         "ABOR",
         CmdABOR
@@ -73,13 +73,17 @@ CommandFilter Cmd_Filters[17]={
     {
         "RNTO",
         CmdRNTO
+    },
+    {
+        "REST",
+        CmdREST
     }
 };
 
 void HandleCommand(const char* cmd,const char* params,Client* client)
 {
     // printf("handle cmd %s\n",&cmd);
-    for (int i=0;i<17;i++)
+    for (int i=0;i<18;i++)
     {
         if (strcmp(cmd,Cmd_Filters[i].name)==0)
         {
@@ -104,7 +108,7 @@ void CmdABOR(const char* params,Client *client)
     {
         close(client->tran_fd);
         client->tran_fd=-1;
-        // post_msg(client->conn_fd,426,NULL);
+        post_msg(client->conn_fd,426,NULL);
     }
     // post_msg(client->tran_fd,226,NULL);
     return;
@@ -173,6 +177,7 @@ void CmdPORT(const char* params,Client *client)
             client->addr.sin_family = AF_INET;
             client->addr.sin_port = htons((p1<<8)+p2);
             // printf("%d\n",(p1<<8)+p2);
+            printf("%s %d",ip,((p1<<8)+p2));
             if (inet_pton(AF_INET,ip, &(client->addr.sin_addr)) <= 0) {			//转换ip地址:点分十进制-->二进制
                 printf("Error inet_pton(): %s(%d)\n", strerror(errno), errno);
                 post_msg(client->conn_fd,501,NULL);
@@ -253,7 +258,7 @@ void CmdRETR(const char *params,Client* client)
             fclose(file);
             pthread_t thread_id;
             pthread_create(&thread_id,NULL,send_file,(void*)client);
-            pthread_detach(thread_id);
+            // pthread_detach(thread_id);
         }
     }
     return;
@@ -281,7 +286,7 @@ void CmdSTOR(const char *params,Client* client)
             fclose(file);
             pthread_t thread_id;
             pthread_create(&thread_id,NULL,recv_file,(void*)client);
-            pthread_detach(thread_id);
+            // pthread_detach(thread_id);
         }
     }
     return;
@@ -294,18 +299,19 @@ void CmdREST(const char *params,Client* client)
     }
     else
     {
+        if(BuildDTP(client)==-1)return;
         client->offset=atoi(params);
         if(client->state==UPLOAD)
         {
             pthread_t thread_id;
             pthread_create(&thread_id,NULL,recv_file,(void*)client);
-            pthread_detach(thread_id);
+            // pthread_detach(thread_id);
         }
         else if(client->state==DOWNLOAD)
         {
             pthread_t thread_id;
             pthread_create(&thread_id,NULL,send_file,(void*)client);
-            pthread_detach(thread_id);
+            // pthread_detach(thread_id);
         }
     }
 }
@@ -363,17 +369,14 @@ void CmdLIST(const char *params,Client* client)
     if(BuildDTP(client)==-1)return;
     if (params!=NULL)
     {
-        sprintf(client->filepath,"%s/%s",client->curdir,params);
+        char *tmp=client->curdir;
+        sprintf(client->curdir,"%s/%s",tmp,params);
     }
-    else
-    {
-        strcpy(client->filepath,client->curdir);
-    }
-    printf("list, %s\n",client->filepath);
+    printf("list, %s\n",client->curdir);
     // send_list((void*)client);
     pthread_t thread_id;
     pthread_create(&thread_id,NULL,send_list,(void*)client);
-    pthread_detach(thread_id);
+    // pthread_detach(thread_id);
     return;
 }
 
@@ -549,6 +552,10 @@ int BuildDTP(Client* client)
             close(client->tran_fd);
             post_msg(client->conn_fd,425,NULL);
             return -1;
+        }
+        else
+        {
+            close(client->listen_fd);
         }
     }
     else if(client->tran_mode==PASV)

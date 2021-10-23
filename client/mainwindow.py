@@ -190,6 +190,7 @@ class FTPClient(QMainWindow,Ui_MainWindow):
         # self.cmdBrowser.moveCursor(self.cmdBrowser.textCursor().End) 
     def post_msg(self,msg):
         msg+='\r\n'
+        # print(self.conn_fd)
         self.conn_fd.send(msg.encode('utf-8'))
         self.cmdBrowser.append('client: '+msg)
 
@@ -198,13 +199,13 @@ class FTPClient(QMainWindow,Ui_MainWindow):
     def login(self):        
         # get local ip
         try:
-            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            s.connect(('8.8.8.8', 80))
-            self.local_ip = s.getsockname()[0]
+            # s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            # s.connect(('8.8.8.8', 80))
+            # self.local_ip = s.getsockname()[0]
+            import requests
+            self.local_ip = requests.get('https://checkip.amazonaws.com').text.strip()
         except Exception as e:
             print(str(e))
-        finally:
-            s.close()
         # get available port
         try:
             s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -221,7 +222,8 @@ class FTPClient(QMainWindow,Ui_MainWindow):
             self.get_msg()
             self.post_msg('PASS '+self.passEdit.text())
             self.get_msg()
-            
+            self.SYST()
+            self.TYPE()
             self.LIST()
             self.LocalLIST()
         except Exception as e:
@@ -231,22 +233,29 @@ class FTPClient(QMainWindow,Ui_MainWindow):
     def set_PORT(self):      
         self.tran_mode='PORT' 
     def ABOR(self):
-        self.post_msg('ABOR')
+        # self.post_msg('ABOR')
         self.tran_fd.close()
         self.get_msg()
-        self.get_msg()
+        # self.get_msg()
+        print('abor')
     def REST(self):
+        self.BuildDTP()
+        self.offset+=8192
         self.post_msg('REST '+str(self.offset))
-        item=self.QTreeWidgetItem(self.transWidget).currentItem()
+        if(self.tran_mode=='PORT'):
+            self.tran_fd,_=self.listen_fd.accept()
+            self.listen_fd.close()
+        self.get_msg()
+        item=self.transWidget.currentItem()
         filepath=item.text(1)
         def update(offset):
-            item.setText(4,str(offset/int(item.text(2))))  
+            item.setText(4,str(offset/int(item.text(3))))  
         if item.text(0)=='Download':
             self.thread=DownloadThread(self,filepath)
             self.thread.update_signal.connect(update)
             self.thread.complete_signal.connect(self.finish)
             self.thread.start()
-        elif item.text(1)=='Upload':
+        elif item.text(0)=='Upload':
             self.thread=UploadThread(self,filepath)
             self.thread.update_signal.connect(update)
             self.thread.complete_signal.connect(self.finish)
@@ -261,13 +270,19 @@ class FTPClient(QMainWindow,Ui_MainWindow):
         self.tran_fd = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.tran_fd.connect((ip, port))
     def PORT(self):
+        s=socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        s.bind((self.local_ip,0))
+        port = s.getsockname()[1]
+        print(self.local_ip,port)
         self.listen_fd = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.listen_fd.bind(('',0))
-        port = self.listen_fd.getsockname()[1]
-        self.listen_fd.listen(1)
-        self.post_msg('PORT '+str(self.local_ip).replace('.',',')+','+str(int(port/256))+str(port%256))
+        self.listen_fd.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        self.listen_fd.bind((self.local_ip,port))
+        self.listen_fd.listen(5)
+        self.post_msg('PORT '+str(self.local_ip).replace('.',',')+','+str(int(port/256))+','+str(port%256))
         self.get_msg()
-        self.tran_fd,_=self.listen_fd.accept()
+
+
     def TYPE(self):
         self.post_msg('TYPE I')
         self.get_msg()
@@ -306,6 +321,10 @@ class FTPClient(QMainWindow,Ui_MainWindow):
         self.remoteWidget.clear()
         self.BuildDTP()
         self.post_msg('LIST')
+        if(self.tran_mode=='PORT'):
+            self.tran_fd,_=self.listen_fd.accept()
+            self.listen_fd.close()
+        self.get_msg()        
         file_list=''
         while True:
             data=self.tran_fd.recv(8192).decode()
@@ -313,8 +332,10 @@ class FTPClient(QMainWindow,Ui_MainWindow):
             if not data:break
         file_list=file_list.split('\n')[1:-1] # 最后一行是空行
         for file in file_list:
-            file = re.sub('\s+', ' ',file)
+            file = re.sub('\s+', ' ',file).strip('\r')
             file=file.split(' ')
+            if file[-1]=='':
+                file=file[:-1]
             item = QTreeWidgetItem(self.remoteWidget)
             if file[0][0]=='d':
                 item.setText(0,'Folder')
@@ -322,7 +343,6 @@ class FTPClient(QMainWindow,Ui_MainWindow):
             item.setText(1,file[-1])
             item.setText(2,file[4])
             item.setText(3,' '.join(file[5:8]))
-        self.get_msg()
         self.tran_fd.close()
         self.get_msg()
     def LocalLIST(self):
@@ -339,6 +359,7 @@ class FTPClient(QMainWindow,Ui_MainWindow):
             item.setText(3,time.strftime('%b %d %H:%M', time.gmtime(stat.st_mtime)))
     def finish(self):
         self.get_msg()
+        print('finish')
         self.LIST()
         self.LocalLIST()
     def RETR(self):            
@@ -346,6 +367,9 @@ class FTPClient(QMainWindow,Ui_MainWindow):
         item=self.remoteWidget.currentItem()
         filepath=self.localdir+'/'+item.text(1)
         self.post_msg('RETR '+item.text(1))
+        if(self.tran_mode=='PORT'):
+            self.tran_fd,_=self.listen_fd.accept()
+            self.listen_fd.close()
         self.get_msg()
         item2=QTreeWidgetItem(self.transWidget)
         item2.setText(0,'Download')
@@ -364,6 +388,9 @@ class FTPClient(QMainWindow,Ui_MainWindow):
         item=self.localWidget.currentItem()
         filepath=self.localdir+'/'+item.text(1)
         self.post_msg('STOR '+item.text(1))
+        if(self.tran_mode=='PORT'):
+            self.tran_fd,_=self.listen_fd.accept()
+            self.listen_fd.close()
         self.get_msg()
         item2=QTreeWidgetItem(self.transWidget)
         item2.setText(0,'Upload')

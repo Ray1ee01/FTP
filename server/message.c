@@ -22,15 +22,16 @@ void get_msg(int fd, char *msg, int max_len)
 }
 int get_data(int fd, char *msg, int max_len)
 {
+    if(fd==-1)return -1;
     int p = 0;
     while (1) {
         int n = read(fd, msg + p,max_len - p);
-        // printf("%d\n",n);
         if (n < 0) {
             // printf("Error read(): %s(%d)\n", strerror(errno), errno);
             // close(conn_fd);
+            p=-1;
             continue;
-        } else if (n == 0) {
+        } else if (n==0) {
             break;
         } else {
             p += n;
@@ -41,6 +42,7 @@ int get_data(int fd, char *msg, int max_len)
 
 int post_data(int fd, char *msg, int max_len)
 {
+    if(fd==-1)return -1;
     int p = 0;
     while (1) {
         int n = write(fd, msg + p,max_len - p);
@@ -182,15 +184,20 @@ void* send_file(void *args)
         char buf[BUFFER_SIZE];
         bzero(buf,BUFFER_SIZE);
         int len=0;
+        int flag=0;
         while((len=fread(buf,1,BUFFER_SIZE,file))>0)
         {
-            if(post_data(client->tran_fd,buf,len)==-1)
+            if((flag=post_data(client->tran_fd,buf,len))==-1)
             {
                 post_msg(client->conn_fd,426,NULL);
                 break;
             }
             client->offset+=len;
             bzero(buf,BUFFER_SIZE);
+        }
+        if(flag!=-1)
+        {
+            client->offset=0;
         }
         fclose(file);
         if(client->tran_mode==PASV)
@@ -200,7 +207,7 @@ void* send_file(void *args)
             client->listen_fd=-1;
         }
         client->tran_mode=NOT_SET;
-        if(client->tran_fd!=-1)close(client->tran_fd);
+        close(client->tran_fd);
         client->tran_fd=-1;
         post_msg(client->conn_fd,226,NULL);
     }
@@ -211,6 +218,7 @@ void* recv_file(void *args)
 {
     Client* client=(Client*)args;
     FILE *file;
+    printf("recv %s\n",client->filepath);
     if((file=fopen(client->filepath,"ab+"))==NULL)
     {
         post_msg(client->conn_fd,550,NULL);
@@ -223,6 +231,7 @@ void* recv_file(void *args)
         int len=0;
         while((len=get_data(client->tran_fd,buf,BUFFER_SIZE))>0)
         {
+            // printf("%d\n",client->tran_fd);
             if((fwrite(buf,sizeof(char),len,file))<len)
             {
                 post_msg(client->conn_fd,451,NULL);
@@ -234,13 +243,22 @@ void* recv_file(void *args)
         }
         fflush(file);
         fclose(file);
+        printf("len %d\n",len);
         if(client->tran_mode==PASV)
         {
             close(client->listen_fd);
             client->listen_fd=-1;
         }
         client->tran_mode=NOT_SET;
-        if(client->tran_fd!=-1)close(client->tran_fd);
+        if(len==-1)
+        {
+            post_msg(client->conn_fd,426,NULL);
+        }
+        else
+        {
+            client->offset=0;
+        }
+        close(client->tran_fd);
         client->tran_fd=-1;
         post_msg(client->conn_fd,226,NULL);
     }

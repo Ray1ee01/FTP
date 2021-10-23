@@ -53,7 +53,7 @@
 #define MAX_CLIENTS 10
 
 
-#define BUFFER_SIZE 100
+#define BUFFER_SIZE 8192
 
 typedef struct
 {

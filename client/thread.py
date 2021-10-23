@@ -27,13 +27,14 @@ class DownloadThread(QThread):
         except:
             self.update_signal.emit(self.client.offset)
             self.complete_signal.emit()
-            self.client.tran_fd.close()
+            # self.client.tran_fd.close()
         else:
-            self.client.offset=0
             self.update_signal.emit(self.client.offset)
+            self.client.offset=0
             self.complete_signal.emit()
             self.client.tran_fd.close()
-        self.exit()
+        finally:
+            self.exit()
 
 class UploadThread(QThread):
     update_signal=pyqtSignal(int)
@@ -60,13 +61,15 @@ class UploadThread(QThread):
                         self.update_signal.emit(self.client.offset)
         except:
             self.update_signal.emit(self.client.offset)
+            # self.client.tran_fd.close()
             self.complete_signal.emit()
-            self.client.tran_fd.close()
             print('except')
         else:
             self.update_signal.emit(self.client.offset)
-            self.complete_signal.emit()
             self.client.tran_fd.close()
             self.client.offset=0
+            self.complete_signal.emit()
             print('else')
-        self.exit()
+        finally:
+            print('exit')
+            self.exit()

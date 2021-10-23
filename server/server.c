@@ -85,6 +85,7 @@ int main(int argc, char **argv) {
         t_write=write_set;
         // 无限期阻塞，并测试文件描述符变动
         result = select(FD_SETSIZE,&t_read,&t_write,(fd_set*) 0,NULL);
+        // printf("result %d\n",result);
         if (result<1)
         {
             printf("Error Select\n");
@@ -93,6 +94,7 @@ int main(int argc, char **argv) {
         // 建立连接
         if (FD_ISSET(listen_fd,&t_read))
         {
+            printf("listen_fd %d\n",listen_fd);
             conn_fd=AcceptConnection(listen_fd);
             if (conn_fd==-1)
             {
@@ -121,7 +123,7 @@ int main(int argc, char **argv) {
                     }
                 }
             }
-            if(result==1)continue;
+            // if(result==1)continue;
         }
         for(int i=0;i<MAX_CLIENTS;i++)
         {
@@ -129,9 +131,10 @@ int main(int argc, char **argv) {
             {
                 continue;
             }
+            // printf("1conn_fd: %d\n",client_entities[i].conn_fd);
             if (FD_ISSET(client_entities[i].conn_fd,&t_read))
             {
-                // printf("get avail client %d\n",i);
+                printf("2conn_fd: %d\n",client_entities[i].conn_fd);
                 memset(sentence,0,sizeof sentence);
                 get_msg(client_entities[i].conn_fd,sentence,255);
                 if(strlen(sentence)<=0)

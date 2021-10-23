@@ -50,6 +50,9 @@ void CmdRNFR(const char *params,Client *client);
 
 void CmdRNTO(const char *params,Client *client);
 
+void CmdREST(const char *params,Client *client);
+
+
 int BuildDTP(Client* client);
 
 
