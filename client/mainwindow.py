@@ -120,6 +120,9 @@ class Ui_MainWindow(object):
         self.restButton = QtWidgets.QPushButton(self.centralwidget)
         self.restButton.setGeometry(QtCore.QRect(950, 590, 111, 24))
         self.restButton.setObjectName("restButton")
+        self.quitButton = QtWidgets.QPushButton(self.centralwidget)
+        self.quitButton.setGeometry(QtCore.QRect(1120, 40, 81, 24))
+        self.quitButton.setObjectName("quitButton")
         MainWindow.setCentralWidget(self.centralwidget)
         self.statusbar = QtWidgets.QStatusBar(MainWindow)
         self.statusbar.setObjectName("statusbar")
@@ -146,6 +149,7 @@ class Ui_MainWindow(object):
         self.storButton.setText(_translate("MainWindow", "Upload"))
         self.aborButton.setText(_translate("MainWindow", "Pause"))
         self.restButton.setText(_translate("MainWindow", "Continue"))
+        self.quitButton.setText(_translate("MainWindow", "quit"))
 
 
 class FTPClient(QMainWindow,Ui_MainWindow):
@@ -174,7 +178,7 @@ class FTPClient(QMainWindow,Ui_MainWindow):
         self.storButton.clicked.connect(self.STOR)
         self.aborButton.clicked.connect(self.ABOR)
         self.restButton.clicked.connect(self.REST)
-
+        self.quitButton.clicked.connect(self.QUIT)
         self.ipEdit.setText('49.232.106.46')
         self.portEdit.setText('6789')
         self.userEdit.setText('anonymous')
@@ -238,6 +242,10 @@ class FTPClient(QMainWindow,Ui_MainWindow):
         self.get_msg()
         # self.get_msg()
         print('abor')
+    def QUIT(self):
+        self.post_msg('QUIT')
+        self.get_msg()
+        self.conn_fd.close()
     def REST(self):
         self.BuildDTP()
         self.offset+=8192
