@@ -104,13 +104,29 @@ void HandleCommand(const char* cmd,const char* params,Client* client)
 }
 void CmdABOR(const char* params,Client *client)
 {
-    if (client->tran_fd!=-1)
+    // printf("conn:%d tran:%d\n",client->conn_fd,client->tran_fd);
+    if (params!=NULL)
     {
-        close(client->tran_fd);
-        client->tran_fd=-1;
-        post_msg(client->conn_fd,426,NULL);
+        post_msg(client->conn_fd,504,NULL);
     }
-    // post_msg(client->tran_fd,226,NULL);
+    else
+    {
+        post_msg(client->conn_fd,221,NULL);
+        if(client->tran_fd!=-1)
+        {
+            close(client->tran_fd);
+
+        }
+        if(client->conn_fd!=-1)
+        {
+            FD_CLR(client->conn_fd,&read_set);
+            FD_CLR(client->conn_fd,&write_set);
+            close(client->conn_fd);
+        }
+        Init_Client(client);
+        // printf("quit success\n");
+    }
+    // printf("FDSETSIZE:%d\n",FD_SETSIZE);
     return;
 }
 
@@ -336,7 +352,7 @@ void CmdTYPE(const char *params,Client* client)
 }
 void CmdQUIT(const char *params,Client* client)
 {
-    printf("conn:%d tran:%d\n",client->conn_fd,client->tran_fd);
+    // printf("conn:%d tran:%d\n",client->conn_fd,client->tran_fd);
     if (params!=NULL)
     {
         post_msg(client->conn_fd,504,NULL);
@@ -356,9 +372,9 @@ void CmdQUIT(const char *params,Client* client)
             close(client->conn_fd);
         }
         Init_Client(client);
-        printf("quit success\n");
+        // printf("quit success\n");
     }
-    printf("FDSETSIZE:%d\n",FD_SETSIZE);
+    // printf("FDSETSIZE:%d\n",FD_SETSIZE);
     return;
 }
 void CmdLIST(const char *params,Client* client)
