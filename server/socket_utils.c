@@ -7,7 +7,7 @@
 // return: listenfd，标识已listen的socket
 int ListenBind(int port)
 {
-	printf("start listen\n");
+	// printf("start listen\n");
     int listen_fd;
     struct sockaddr_in addr;
     //创建socket
@@ -19,7 +19,7 @@ int ListenBind(int port)
 	setsockopt(listen_fd, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse));
 	// bug fixed: 如果两次调用PASV绑定到同一个port，则会报错，即使同时关闭tran_fd和listen_fd也没用，无法关闭socket的bind
 	//			  因为一般的实现是PASV随机绑定port，很难出现重复，因此是隐形的bug.
-	printf("socket success\n");
+	// printf("socket success\n");
 	//设置本机的ip和port
 	memset(&addr, 0, sizeof(addr));
 	addr.sin_family = AF_INET;
@@ -30,14 +30,14 @@ int ListenBind(int port)
 		printf("Error bind(): %s(%d)\n", strerror(errno), errno);
 		return -1;
 	}
-	printf("bind success\n");
+	// printf("bind success\n");
 	//开始监听socket
 	if (listen(listen_fd, 128) == -1) {// Max Backlog
 		printf("Error listen(): %s(%d)\n", strerror(errno), errno);
 		return -1;
 	}
     // -1 意味着中间报错了
-	printf("listen success");
+	// printf("listen success");
     return listen_fd;
 }
 

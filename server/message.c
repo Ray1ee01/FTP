@@ -163,7 +163,7 @@ void post_msg(int fd,int code, char *pattern)
         }
     }
     send(fd,msg,strlen(msg),MSG_WAITALL);// why send duplicate last msg?
-    printf("Send msg %s\n",msg);
+    // printf("Send msg %s\n",msg);
     // printf("Send msg %s\n",pattern);
     return;
 }
@@ -202,7 +202,7 @@ void* send_file(void *args)
         fclose(file);
         if(client->tran_mode==PASV)
         {
-            printf("PASV mode\n");
+            // printf("PASV mode\n");
             close(client->listen_fd);
             client->listen_fd=-1;
         }
@@ -218,7 +218,7 @@ void* recv_file(void *args)
 {
     Client* client=(Client*)args;
     FILE *file;
-    printf("recv %s\n",client->filepath);
+    // printf("recv %s\n",client->filepath);
     if((file=fopen(client->filepath,"ab+"))==NULL)
     {
         post_msg(client->conn_fd,550,NULL);
@@ -243,7 +243,7 @@ void* recv_file(void *args)
         }
         fflush(file);
         fclose(file);
-        printf("len %d\n",len);
+        // printf("len %d\n",len);
         if(client->tran_mode==PASV)
         {
             close(client->listen_fd);
@@ -268,12 +268,12 @@ void* recv_file(void *args)
 //https://blog.csdn.net/clarkness/article/details/88721769
 void* send_list(void* args)
 {
-    printf("send_list\n");
+    // printf("send_list\n");
     Client* client=(Client*)args;
     FILE *file=NULL;
     char cmd[256]="ls -l ";
     sprintf(cmd,"ls -l %s",client->curdir);
-    printf("cmd %s",cmd);
+    // printf("cmd %s",cmd);
     char buf[BUFFER_SIZE];
     bzero(buf,BUFFER_SIZE);
     file = popen(cmd,"r");

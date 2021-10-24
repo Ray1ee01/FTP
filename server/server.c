@@ -21,11 +21,11 @@ int main(int argc, char **argv) {
     // struct sockaddr_in addr;
     // int p;
     // int len;
-    int port =6789;
+    int port =6789; // 21 port: connection refused
     char sentence[256];
     // char buf[BUFFER_SIZE];
     // strcpy(root,"/tmp");
-    strcpy(root,"/home/ubuntu/test");
+    strcpy(root,"/home/ubuntu/test"); // for client test
     GetLocalIP(server_ip);
     // printf("%s",server_ip);
     // printf("Start receive argu\n");    
@@ -48,6 +48,10 @@ int main(int argc, char **argv) {
             // TODO
             // 检测port是否可用 or 合法
             port=atoi(optarg);
+            if (CheckAvailPort(port)==-1)
+            {
+                printf("Port %d is used\n",port);
+            }
             break;
         case 'r':
             // printf("Directory: %s.\n",optarg);
@@ -134,7 +138,7 @@ int main(int argc, char **argv) {
             // printf("1conn_fd: %d\n",client_entities[i].conn_fd);
             if (FD_ISSET(client_entities[i].conn_fd,&t_read))
             {
-                printf("2conn_fd: %d\n",client_entities[i].conn_fd);
+                // printf("2conn_fd: %d\n",client_entities[i].conn_fd);
                 memset(sentence,0,sizeof sentence);
                 get_msg(client_entities[i].conn_fd,sentence,255);
                 if(strlen(sentence)<=0)

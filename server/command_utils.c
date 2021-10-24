@@ -346,8 +346,6 @@ void CmdQUIT(const char *params,Client* client)
         post_msg(client->conn_fd,221,NULL);
         if(client->tran_fd!=-1)
         {
-            FD_CLR(client->tran_fd,&read_set);
-            FD_CLR(client->tran_fd,&write_set);
             close(client->tran_fd);
 
         }
